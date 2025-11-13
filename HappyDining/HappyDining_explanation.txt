@@ -1,0 +1,6 @@
+HappyDining_saba
+	これは、supabaseに上げてあるものです。サーバー側のファイルになっています。
+	supabaseには、geminiとspoonacularとDeepLのAPIキーを保存しています。
+HappyDining_android
+	これは、スマホに送るアプリデータです。
+	AndroidStudioを使用しました。

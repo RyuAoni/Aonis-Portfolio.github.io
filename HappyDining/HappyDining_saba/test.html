@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>API Test Page</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        input, button { font-size: 16px; padding: 8px; margin-bottom: 10px; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; background-color: #f9f9f9; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>料理提案API テスト画面</h1>
+
+    <div>
+        <label for="mood">気分：</label>
+        <input type="text" id="mood" value="がっつり食べたい">
+    </div>
+    <div>
+        <label for="condition">体調：</label>
+        <input type="text" id="condition" value="元気">
+    </div>
+
+    <button id="submitBtn">献立を提案してもらう</button>
+
+    <h2>結果</h2>
+    <div id="result">ここに結果が表示されます</div>
+
+    <script>
+        // あなたのEdge FunctionのURLに書き換えてください
+        const API_URL = 'https://lvwayoiqtokyjfgtcowo.supabase.co/functions/v1/suggest-menu';
+
+        const moodInput = document.getElementById('mood');
+        const conditionInput = document.getElementById('condition');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultDiv = document.getElementById('result');
+
+        submitBtn.addEventListener('click', async () => {
+            resultDiv.textContent = '考え中...';
+
+            // スマホに保存されている想定の、過去の良い評価（テスト用に固定）
+            const positiveFeedback = ["麻婆豆腐", "カレーライス"];
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        mood: moodInput.value,
+                        condition: conditionInput.value,
+                        positiveFeedback: positiveFeedback,
+                    }),
+                });
+
+                if (!response.ok) {
+                    // エラーの場合でも、レスポンスの本文(JSON)を読み取る
+                    const errorData = await response.json();
+
+                    // ステータスコードと、JSONから取り出したメッセージを組み合わせてエラーを作成
+                    const errorMessage = `APIエラー: ${response.status}ggg\nメッセージ: ${errorData.error?.message || '詳細なエラーメッセージはありません'}lnl`;
+
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+
+                // 結果を整形して表示
+                if (data.menus && data.menus.length > 0) {
+                    resultDiv.textContent = data.menus.join('\n');
+                } else {
+                    resultDiv.textContent = '提案されたメニューはありませんでした。';
+                }
+
+            } catch (error) {
+                resultDiv.textContent = `エラーが発生しました。hh\n${error.message}nnn`;
+            }
+        });
+    </script>
+</body>
+</html>
