@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">パラシェア</string>
+    <string name="google_maps_api_key" translatable="false">AIzaSyALGKvCWhYdvj_uBXQK24l4ugu_SP2Ftdw</string>
+    <string name="rental_confirmation_message">%s</string>
+    <string name="close">閉じる</string>
+</resources>
