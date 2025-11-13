@@ -3,9 +3,9 @@
 // データベース接続
 
 $host = 'localhost';
-$dbname = 'parashare';
-$user = 'sharin';
-$password = 'gahi0a3gGSjd';
+$dbname = 'name';
+$user = 'username';
+$password = 'pass';
 
 try {
     // データベースに接続
