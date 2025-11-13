@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>傘立て設置要望</title>
+    <link rel="stylesheet" href="request.css">
+</head>
+<body>
+
+<div class="form-container">
+    <h1>傘立て設置要望</h1>
+    <p>企業や店舗の方は、以下のフォームから傘立ての設置を要望できます。</p>
+
+    <form id="requestForm">
+
+        <div class="form-group">
+            <label for="address">設置希望場所の住所</label>
+            <textarea id="address" name="address" rows="3" placeholder="例：徳島県徳島市..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="adText">コメント</label>
+            <textarea id="adText" name="adText" rows="5" placeholder="理由やパラシェアの感想等"></textarea>
+        </div>
+        
+        <!--<div class="form-group">
+            <label for="coordinates">設置場所の座標 (自動入力)</label>
+            <input type="text" id="coordinates" name="coordinates" readonly>
+        </div>  -->
+
+        <button type="submit">送信する</button>
+    </form>
+</div>
+<p class="note">設置希望ありがとうございます!!</p>
+<script src="request.js"></script>
+</body>
+</html>

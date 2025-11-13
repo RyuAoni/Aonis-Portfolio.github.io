@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>こいこい</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        .card { width: 60px; height: 90px; border: 2px solid #a1a1aa; background-color: #3f3f46; color: white; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 10px; text-align: center; padding: 2px; margin: 2px; transition: all 0.2s ease-in-out; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+        .card:not(.disabled-card):not(.face-down-card):not(.captured-card):hover { transform: translateY(-5px); border-color: #f4f4f5; }
+        .hand-card { cursor: pointer; }
+        .captured-card { width: 40px; height: 60px; font-size: 8px; cursor: default; margin: 1px; }
+        .face-down-card { background-color: #1e293b; color: #1e293b; cursor: default; }
+        .current-player-area { border: 3px solid #f59e0b; box-shadow: 0 0 15px #f59e0b; border-radius: 8px; }
+        .disabled-card { cursor: not-allowed; opacity: 0.6; }
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); }
+        .player-view #opponent-area,
+        .player-view #field-cards-container,
+        .player-view #deck-area-container { display: none; }
+        .player-view #player-area { height: 90%; }
+        .captured-group { border: 1px solid #52525b; border-radius: 4px; padding: 2px; margin-bottom: 2px; min-height: 70px;}
+        .captured-group-title { font-size: 9px; color: #a1a1aa; text-align: center; margin-bottom: 1px; }
+        .spectator-view #opponent-captured-cards,
+        .spectator-view #player-captured-cards { height: auto; min-height: 100px; overflow-y: visible; }
+        .player-view #player-captured-cards { height: 120px; overflow-y: auto; display: grid; }
+        .player-view #player-hand { flex-grow: 1; }
+    </style>
+</head>
+<body class="bg-green-800 text-white flex items-center justify-center h-screen font-sans overflow-hidden">
+
+    <!-- 待機画面エリア -->
+    <div id="lobby-area" class="w-full max-w-4xl p-8 space-y-6 bg-gray-800 rounded-lg shadow-2xl border border-gray-700">
+         <div class="text-center">
+            <h1 class="text-4xl font-bold text-indigo-400">花札こいこい</h1>
+            <p class="text-gray-400">ルームID: <span id="room-id-display" class="font-mono bg-gray-700 p-1 rounded"></span></p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-1 bg-gray-900 p-4 rounded-lg"><h2 class="text-xl font-semibold mb-4 border-b border-gray-600 pb-2">参加者リスト</h2><ul id="player-list" class="space-y-2"></ul></div>
+            <div id="gm-panel" class="md:col-span-2 bg-gray-900 p-4 rounded-lg hidden">
+                <h2 class="text-xl font-semibold mb-4">ゲーム設定 (GM専用)</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="rounds-select" class="block text-sm font-medium text-gray-300">回戦数</label>
+                        <select id="rounds-select" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm text-white focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="3">3回戦</option>
+                            <option value="6">6回戦</option>
+                            <option value="12" selected>12回戦</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="start-game-btn" class="mt-6 w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700">ゲーム開始</button>
+            </div>
+            <div id="player-wait-message" class="md:col-span-2 flex items-center justify-center bg-gray-900 p-4 rounded-lg"><p class="text-gray-400 text-lg">参加者を待っています...</p></div>
+        </div>
+    </div>
+
+    <!-- ゲーム盤面エリア -->
+    <div id="game-board-area" class="hidden w-full h-full p-4 flex flex-col">
+        <!-- 上段 -->
+        <div id="opponent-area" class="player-container flex-shrink-0 h-1/4 p-2 transition-all duration-300">
+            <div class="flex justify-between"><h2 id="opponent-name" class="text-lg font-bold">相手プレイヤー</h2><div class="font-bold">合計: <span id="opponent-total-score">0</span>点</div></div>
+            <div class="flex justify-between items-start mt-1">
+                <div class="text-sm">手札: <span id="opponent-hand-count" class="font-mono text-lg">?</span>枚</div>
+                <div id="opponent-captured-cards" class="grid grid-cols-4 gap-1 w-3/4 bg-black/20 p-1 rounded">
+                    <div class="captured-group"><div class="captured-group-title">光</div><div id="opponent-captured-hikari" class="flex flex-wrap"></div></div>
+                    <div class="captured-group"><div class="captured-group-title">タネ</div><div id="opponent-captured-tane" class="flex flex-wrap"></div></div>
+                    <div class="captured-group"><div class="captured-group-title">短冊</div><div id="opponent-captured-tan" class="flex flex-wrap"></div></div>
+                    <div class="captured-group"><div class="captured-group-title">カス</div><div id="opponent-captured-kasu" class="flex flex-wrap"></div></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 中段 -->
+        <div class="flex-grow p-2 flex items-center justify-center space-x-8">
+            <div id="field-cards-container" class="w-3/4"><div id="field-cards" class="flex flex-wrap justify-center items-center bg-green-900/50 p-4 rounded-lg min-h-[220px]"></div></div>
+            <div id="deck-area-container" class="w-1/4 flex flex-col items-center"><div class="text-xl font-bold mb-2">第 <span id="round-number">1</span> 回戦</div><div class="card bg-red-800 !cursor-default">山札</div><div class="mt-2">残り: <span id="deck-count" class="font-mono text-lg">32</span>枚</div></div>
+        </div>
+        
+        <!-- 下段 -->
+        <div id="player-area" class="player-container flex-shrink-0 h-2/5 p-2 flex flex-col transition-all duration-300">
+             <div class="flex justify-between items-start">
+                 <div class="flex justify-between w-full"><h2 id="player-name" class="text-lg font-bold">あなた</h2><div class="font-bold">合計: <span id="player-total-score">0</span>点</div></div>
+            </div>
+             <div id="player-hand-count-display" class="text-sm mt-1 hidden">手札: <span id="player-hand-count" class="font-mono text-lg">?</span>枚</div>
+             <div id="player-captured-cards" class="grid grid-cols-4 gap-1 w-full bg-black/20 p-1 rounded mb-1">
+                 <div class="captured-group"><div class="captured-group-title">光</div><div id="player-captured-hikari" class="flex flex-wrap"></div></div>
+                 <div class="captured-group"><div class="captured-group-title">タネ</div><div id="player-captured-tane" class="flex flex-wrap"></div></div>
+                 <div class="captured-group"><div class="captured-group-title">短冊</div><div id="player-captured-tan" class="flex flex-wrap"></div></div>
+                 <div class="captured-group"><div class="captured-group-title">カス</div><div id="player-captured-kasu" class="flex flex-wrap"></div></div>
+             </div>
+             <div id="player-hand" class="flex-grow flex items-center justify-center space-x-[-20px] p-2"></div>
+        </div>
+    </div>
+
+    <!-- モーダル各種 -->
+    <div id="action-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 border border-indigo-500 w-full max-w-md text-center"><h2 class="text-2xl font-bold text-indigo-400 mb-4">役が成立しました！</h2><div id="yaku-list" class="text-left bg-gray-900 p-4 rounded-md mb-4"></div><p class="text-xl font-semibold mb-6">合計 <span id="total-score" class="text-yellow-400">0</span> 点</p><div class="flex justify-around"><button id="koikoi-btn" class="px-8 py-3 text-lg font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">こいこい</button><button id="shobu-btn" class="px-8 py-3 text-lg font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">勝負</button></div></div>
+    </div>
+    <div id="result-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="bg-gray-800 rounded-lg shadow-xl p-6 border border-yellow-500 w-full max-w-md text-center"><h2 id="result-title" class="text-3xl font-bold text-yellow-400 mb-4"></h2><div id="result-yaku-list" class="text-left bg-gray-900 p-4 rounded-md mb-4"></div><p class="text-xl font-semibold mb-6">最終得点: <span id="result-score" class="text-yellow-400">0</span> 点</p><button id="next-round-btn" class="hidden mt-4 px-6 py-2 text-md font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"></button><button id="close-result-btn" class="mt-4 px-6 py-2 text-md font-bold text-white bg-gray-600 rounded-lg hover:bg-gray-700 transition-colors">閉じる</button></div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const lobbyArea = document.getElementById('lobby-area');
+        const gameBoardArea = document.getElementById('game-board-area');
+        const roomIdDisplay = document.getElementById('room-id-display');
+        const playerList = document.getElementById('player-list');
+        const gmPanel = document.getElementById('gm-panel');
+        const playerWaitMessage = document.getElementById('player-wait-message');
+        const roundsSelect = document.getElementById('rounds-select');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const fieldCardsContainer = document.getElementById('field-cards-container');
+        const deckAreaContainer = document.getElementById('deck-area-container');
+        const opponentArea = document.getElementById('opponent-area');
+        const opponentName = document.getElementById('opponent-name');
+        const opponentTotalScore = document.getElementById('opponent-total-score');
+        const opponentHandCount = document.getElementById('opponent-hand-count');
+        const opponentCapturedCards = document.getElementById('opponent-captured-cards');
+        const opponentCapturedContainers = {
+            hikari: document.getElementById('opponent-captured-hikari'), tane: document.getElementById('opponent-captured-tane'),
+            tan: document.getElementById('opponent-captured-tan'), kasu: document.getElementById('opponent-captured-kasu'),
+        };
+        const playerArea = document.getElementById('player-area');
+        const playerName = document.getElementById('player-name');
+        const playerTotalScore = document.getElementById('player-total-score');
+        const playerHandCountDisplay = document.getElementById('player-hand-count-display');
+        const playerHandCount = document.getElementById('player-hand-count');
+        const playerCapturedCards = document.getElementById('player-captured-cards');
+        const playerCapturedContainers = {
+            hikari: document.getElementById('player-captured-hikari'), tane: document.getElementById('player-captured-tane'),
+            tan: document.getElementById('player-captured-tan'), kasu: document.getElementById('player-captured-kasu'),
+        };
+        const playerHand = document.getElementById('player-hand');
+        const fieldCards = document.getElementById('field-cards');
+        const deckCount = document.getElementById('deck-count');
+        const roundNumber = document.getElementById('round-number');
+        const actionModal = document.getElementById('action-modal');
+        const resultModal = document.getElementById('result-modal');
+        const yakuList = document.getElementById('yaku-list');
+        const totalScore = document.getElementById('total-score');
+        const koikoiBtn = document.getElementById('koikoi-btn');
+        const shobuBtn = document.getElementById('shobu-btn');
+        const resultTitle = document.getElementById('result-title');
+        const resultYakuList = document.getElementById('result-yaku-list');
+        const resultScore = document.getElementById('result-score');
+        const nextRoundBtn = document.getElementById('next-round-btn');
+        const closeResultBtn = document.getElementById('close-result-btn');
+
+        const playerAreas = {
+            p1: { name: opponentName, score: opponentTotalScore, handCountDisplay: opponentHandCount, capturedContainers: opponentCapturedContainers, area: opponentArea },
+            p2: { name: playerName, score: playerTotalScore, handCountDisplay: playerHandCount, capturedContainers: playerCapturedContainers, hand: playerHand, area: playerArea }
+        };
+
+        // --- State ---
+        let currentUser = null;
+        let myRole = 'spectator';
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('roomId');
+        if (roomIdDisplay) roomIdDisplay.textContent = roomId;
+        const socket = io();
+        console.log('Socket initialized:', socket);
+
+        // --- Helper Functions ---
+        const renderCard = (cardData, isHandCard = false, isFaceDown = false) => {
+             const card = document.createElement('div');
+            card.className = `card ${isHandCard ? 'hand-card' : 'captured-card'}`;
+            card.dataset.cardId = cardData.id;
+            if (isFaceDown) {
+                card.classList.add('face-down-card');
+                card.textContent = '札';
+            } else {
+                card.textContent = cardData.name;
+            }
+            return card;
+        };
+        
+        // --- Socket.IO Event Listener ---
+        const handleBoardUpdate = ({ boardState, myHand, myRole: roleFromServer }) => {
+            if (!playerAreas.p1 || !playerAreas.p2) {
+                console.error("playerAreas is not defined yet in handleBoardUpdate!");
+                return;
+            }
+            const lobby = document.getElementById('lobby-area');
+            if (lobby && !lobby.classList.contains('hidden')) {
+                lobby.classList.add('hidden');
+                gameBoardArea.classList.remove('hidden');
+            }
+            
+            myRole = roleFromServer;
+            console.log(`[handleBoardUpdate] My Role: ${myRole}`);
+
+            const me = currentUser ? boardState.players.find(p => p.id === currentUser.id) : null;
+            console.log(`[handleBoardUpdate] Found 'me': ${me ? me.id : 'null'}`);
+            let player1 = boardState.players[0];
+            let player2 = boardState.players[1];
+            let opponent = null;
+
+            if (myRole === 'player') {
+                gameBoardArea.classList.add('player-view');
+                gameBoardArea.classList.remove('spectator-view');
+                if(playerHandCountDisplay) playerHandCountDisplay.classList.add('hidden');
+                if(playerHand) playerHand.classList.remove('hidden'); // Ensure player hand area is visible
+                console.log('[handleBoardUpdate] Player view activated.');
+                if(me) opponent = boardState.players.find(p => p.id !== me.id);
+                
+                // --- 下段 (自分) ---
+                if (me) {
+                    const ui = playerAreas.p2;
+                    if(ui.name) ui.name.textContent = `あなた (${me.nickname || 'Player'})`;
+                    if(ui.score) ui.score.textContent = me.score;
+                    Object.values(ui.capturedContainers).forEach(cont => { if(cont) cont.innerHTML = ''; });
+                    me.capturedCards.sort((a, b) => a.month - b.month).forEach(card => {
+                        if (ui.capturedContainers[card.type]) ui.capturedContainers[card.type].appendChild(renderCard(card, false));
+                    });
+                    if(ui.hand) ui.hand.innerHTML = ''; // 手札エリアをクリア
+                    console.log(`[Player View] Rendering own hand with ${myHand ? myHand.length : 0} cards.`);
+                    if (myHand) {
+                        // 手札を描画
+                        myHand.sort((a, b) => a.month - b.month).forEach(card => { if(ui.hand) ui.hand.appendChild(renderCard(card, true)); });
+                    } else {
+                        console.error("[Player View] Error: myHand is undefined!");
+                    }
+                }
+                
+                // --- 上段 (相手) ---
+                if (opponent) {
+                    const ui = playerAreas.p1;
+                    if(ui.name) ui.name.textContent = `相手 (${opponent.nickname || 'Player'})`;
+                    if(ui.score) ui.score.textContent = opponent.score;
+                    if(ui.handCountDisplay) ui.handCountDisplay.textContent = opponent.handCount;
+                    Object.values(ui.capturedContainers).forEach(cont => { if(cont) cont.innerHTML = ''; }); // 相手の取札は表示しない
+                }
+
+            } else { // GM or Spectator
+                gameBoardArea.classList.remove('player-view');
+                gameBoardArea.classList.add('spectator-view');
+                if(playerHandCountDisplay) playerHandCountDisplay.classList.remove('hidden');
+                if(playerHand) playerHand.classList.add('hidden'); // GM/観戦者は手札自体は隠す
+                console.log('[handleBoardUpdate] Spectator/GM view activated.');
+
+                // --- 上段 (Player1) ---
+                if (player1) {
+                    const ui = playerAreas.p1;
+                    if(ui.name) ui.name.textContent = `${player1.nickname || 'Player 1'}`;
+                    if(ui.score) ui.score.textContent = player1.score;
+                    Object.values(ui.capturedContainers).forEach(cont => { if(cont) cont.innerHTML = ''; });
+                    player1.capturedCards.sort((a, b) => a.month - b.month).forEach(card => {
+                        if (ui.capturedContainers[card.type]) ui.capturedContainers[card.type].appendChild(renderCard(card, false));
+                    });
+                    if(ui.handCountDisplay) ui.handCountDisplay.textContent = player1.handCount;
+                } else { /* Clear if no player1 */ }
+                
+                // --- 下段 (Player2) ---
+                if (player2) {
+                    const ui = playerAreas.p2;
+                    if(ui.name) ui.name.textContent = `${player2.nickname || 'Player 2'}`;
+                    if(ui.score) ui.score.textContent = player2.score;
+                    Object.values(ui.capturedContainers).forEach(cont => { if(cont) cont.innerHTML = ''; });
+                    player2.capturedCards.sort((a, b) => a.month - b.month).forEach(card => {
+                        if (ui.capturedContainers[card.type]) ui.capturedContainers[card.type].appendChild(renderCard(card, false));
+                    });
+                    if(ui.handCountDisplay) ui.handCountDisplay.textContent = player2.handCount;
+                } else { /* Clear if no player2 */ }
+            }
+
+            // --- 共通盤面描画 ---
+            if(fieldCards) fieldCards.innerHTML = '';
+            if (myRole !== 'player') {
+                 boardState.field.forEach(card => { if(fieldCards) fieldCards.appendChild(renderCard(card, false)); });
+            }
+            if(deckCount) deckCount.textContent = boardState.deckCount;
+            if(roundNumber) roundNumber.textContent = boardState.round;
+            
+            // --- ターン表示 ---
+            const currentPlayerId = boardState.currentPlayerId;
+            if(playerAreas.p1 && playerAreas.p1.area) playerAreas.p1.area.classList.toggle('current-player-area', player1 && player1.id === currentPlayerId);
+            if(playerAreas.p2 && playerAreas.p2.area) playerAreas.p2.area.classList.toggle('current-player-area', player2 && player2.id === currentPlayerId);
+
+            // --- 手札のクリック可否 ---
+            if (myRole === 'player') {
+                const isMyTurnNow = me && me.id === currentPlayerId;
+                document.querySelectorAll('#player-hand .hand-card').forEach(card => {
+                    card.classList.toggle('disabled-card', !isMyTurnNow);
+                });
+            } else {
+                 document.querySelectorAll('#player-hand .card').forEach(card => card.classList.add('disabled-card'));
+                 document.querySelectorAll('#opponent-hand .card').forEach(card => card.classList.add('disabled-card'));
+            }
+        };
+
+        // --- Document Ready ---
+        document.addEventListener('DOMContentLoaded', () => {
+             if (!socket) {
+                console.error("Socket is not initialized!");
+                alert("接続エラーが発生しました。ページを再読み込みしてください。");
+                return;
+            }
+            const token = localStorage.getItem('token');
+            if (!token || !roomId) {
+                window.location.href = window.location.origin + '/home.html';
+                return;
+            }
+            try {
+                currentUser = JSON.parse(atob(token.split('.')[1]));
+            } catch (e) {
+                window.location.href = window.location.origin + '/login.html';
+                return;
+            }
+            socket.emit('joinLobby', { token, roomId });
+        });
+        
+        // --- Socket.IO Event Listeners ---
+        if (socket) {
+            socket.on('gameStarted', handleBoardUpdate);
+            socket.on('updateBoard', handleBoardUpdate);
+            socket.on('updateLobby', ({ participants }) => {
+                if (!playerList) return; // Add null check for safety
+                playerList.innerHTML = '';
+                let isGmInLobby = false;
+                participants.forEach(p => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center justify-between p-2 bg-gray-700 rounded';
+                    const nicknameSpan = document.createElement('span');
+                    nicknameSpan.textContent = p.nickname || `Player ${p.id}`;
+                    if (currentUser && p.id === currentUser.id) nicknameSpan.className = "font-bold text-indigo-400";
+                    const roleSpan = document.createElement('span');
+                    if (p.role === 'gm') {
+                        roleSpan.textContent = 'GM';
+                        roleSpan.className = 'text-xs bg-yellow-500 text-gray-900 font-bold px-2 py-1 rounded-full';
+                        if (currentUser && p.id === currentUser.id) isGmInLobby = true;
+                    } else {
+                        roleSpan.textContent = p.role === 'player' ? 'Player' : 'Spectator';
+                        roleSpan.className = `text-xs ${p.role === 'player' ? 'bg-blue-500' : 'bg-gray-500'} px-2 py-1 rounded-full`;
+                    }
+                    li.appendChild(nicknameSpan);
+                    li.appendChild(roleSpan);
+                    playerList.appendChild(li);
+                });
+                if (gmPanel && playerWaitMessage) { // Add null checks
+                    if (isGmInLobby) {
+                        gmPanel.classList.remove('hidden');
+                        playerWaitMessage.classList.add('hidden');
+                    } else {
+                        gmPanel.classList.add('hidden');
+                        playerWaitMessage.classList.remove('hidden');
+                    }
+                }
+            });
+            socket.on('promptAction', ({ yakuResult }) => {
+                 if (!yakuList || !totalScore || !actionModal) return; // Add null checks
+                yakuList.innerHTML = '';
+                yakuResult.yakuList.forEach(yaku => {
+                    const p = document.createElement('p');
+                    p.textContent = `${yaku.name} (${yaku.score}点)`;
+                    yakuList.appendChild(p);
+                });
+                totalScore.textContent = yakuResult.totalScore;
+                actionModal.classList.remove('hidden');
+            });
+            socket.on('roundEnd', ({ winner, score, yakuList: rYakuList, isFinalRound, gmId }) => {
+                 if (!resultTitle || !resultYakuList || !resultScore || !nextRoundBtn || !closeResultBtn || !actionModal || !resultModal) return; // Add null checks
+                resultTitle.textContent = winner === '引き分け' ? '引き分け' : `${winner}の勝ち！`;
+                resultYakuList.innerHTML = '';
+                (rYakuList || []).forEach(yaku => {
+                    const p = document.createElement('p');
+                    p.textContent = `${yaku.name} (${yaku.score}点)`;
+                    resultYakuList.appendChild(p);
+                });
+                resultScore.textContent = score;
+                const isGM = myRole === 'gm';
+                if (isGM) {
+                    nextRoundBtn.classList.remove('hidden');
+                    closeResultBtn.classList.add('hidden');
+                    nextRoundBtn.textContent = isFinalRound ? '最終結果へ' : '次のラウンドへ';
+                } else {
+                    nextRoundBtn.classList.add('hidden');
+                    closeResultBtn.classList.remove('hidden');
+                }
+                actionModal.classList.add('hidden');
+                resultModal.classList.remove('hidden');
+            });
+            socket.on('gameOver', ({ results }) => {
+                localStorage.setItem('gameResults', JSON.stringify(results));
+                window.location.href = window.location.origin + '/result.html';
+            });
+            socket.on('error', (message) => { alert(`エラー: ${message}`); });
+        } else {
+             console.error("Socket not initialized when attaching listeners!");
+        }
+
+        // --- UI Event Listeners ---
+        if (startGameBtn) startGameBtn.addEventListener('click', () => {
+             if (!socket || !roundsSelect) return alert('エラーが発生しました。');
+             const settings = { rounds: parseInt(roundsSelect.value, 10) };
+             // ★ 修正: gameType を追加
+             socket.emit('startGame', { roomId, settings, gameType: 'koikoi' });
+         });
+        if (gameBoardArea) gameBoardArea.addEventListener('click', (event) => {
+             if (!socket) return alert('接続エラー');
+            if (myRole !== 'player') return;
+            const cardEl = event.target.closest('.hand-card');
+            if (cardEl && !cardEl.classList.contains('disabled-card')) {
+                const cardId = parseInt(cardEl.dataset.cardId, 10);
+                socket.emit('playCard', { roomId, cardId });
+            }
+         });
+        if (koikoiBtn) koikoiBtn.addEventListener('click', () => {
+             if (!socket || !actionModal) return alert('接続エラー');
+             socket.emit('declareAction', { roomId, action: 'koikoi' });
+             actionModal.classList.add('hidden');
+         });
+        if (shobuBtn) shobuBtn.addEventListener('click', () => {
+             if (!socket || !actionModal) return alert('接続エラー');
+             socket.emit('declareAction', { roomId, action: 'shobu' });
+             actionModal.classList.add('hidden');
+         });
+        if (nextRoundBtn) nextRoundBtn.addEventListener('click', () => {
+             if (!socket || !resultModal) return alert('接続エラー');
+             socket.emit('nextRound', { roomId });
+             resultModal.classList.add('hidden');
+         });
+        if (closeResultBtn) closeResultBtn.addEventListener('click', () => {
+             if (!resultModal) return;
+             resultModal.classList.add('hidden');
+         });
+
+    </script>
+</body>
+</html>
+

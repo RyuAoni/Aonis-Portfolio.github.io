@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マイページ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen font-sans">
+    <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg shadow-xl border border-gray-700">
+        <div class="text-center">
+            <h2 class="text-3xl font-bold text-indigo-400">マイページ</h2>
+            <p id="email-display" class="mt-2 text-gray-400">メールアドレスを読み込み中...</p>
+        </div>
+        <form id="profile-form" class="space-y-6">
+            <div>
+                <label for="nickname" class="block text-sm font-medium">ニックネーム</label>
+                <input id="nickname" name="nickname" type="text" required maxlength="50" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    更新
+                </button>
+            </div>
+        </form>
+        <div id="message" class="text-center text-sm min-h-[20px]"></div>
+        <div class="text-center text-sm">
+            <a href="home.html" class="font-medium text-indigo-400 hover:text-indigo-300">ホームに戻る</a>
+        </div>
+    </div>
+
+    <script>
+        const emailDisplay = document.getElementById('email-display');
+        const profileForm = document.getElementById('profile-form');
+        const nicknameInput = document.getElementById('nickname');
+        const messageDiv = document.getElementById('message');
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = window.location.origin + '/login.html';
+                return;
+            }
+
+            // サーバーから現在のユーザー情報を取得
+            try {
+                const response = await fetch('/api/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.message);
+
+                const user = data.user;
+                emailDisplay.textContent = user.email;
+                nicknameInput.value = user.nickname || '';
+
+            } catch (error) {
+                console.error('Failed to fetch user data:', error);
+                messageDiv.textContent = 'ユーザー情報の取得に失敗しました。';
+                messageDiv.style.color = '#f87171'; // red-400
+            }
+        });
+
+        profileForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            messageDiv.textContent = '';
+            
+            const token = localStorage.getItem('token');
+            const newNickname = nicknameInput.value.trim();
+
+            if (!newNickname) {
+                messageDiv.textContent = 'ニックネームを入力してください。';
+                messageDiv.style.color = '#f87171';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/me/update', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ nickname: newNickname })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    messageDiv.textContent = 'ニックネームを更新しました！';
+                    messageDiv.style.color = '#4ade80'; // green-400
+                } else {
+                    throw new Error(data.message);
+                }
+
+            } catch (error) {
+                messageDiv.textContent = `更新エラー: ${error.message}`;
+                messageDiv.style.color = '#f87171';
+            }
+        });
+    </script>
+</body>
+</html>

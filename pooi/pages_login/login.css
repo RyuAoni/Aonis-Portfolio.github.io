@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap');
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #0F6A34;
+    font-family: "Noto Sans JP", sans-serif;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .input-group {
+    font-family: "Noto Sans JP", sans-serif;
+    margin-bottom: 15px;
+    text-align: center;
+    color: white;
+  }
+
+  .input-group label {
+    display: block;
+    margin-bottom: 5px;
+    
+  }
+
+  .input-group input {
+    font-family: "Noto Sans JP", sans-serif;
+    font-weight: bold;
+    width: 80%;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    text-align: center;
+  }
+
+  .login{
+    font-family: "Noto Sans JP", sans-serif;
+  }
+
+  button {
+    font-family: "Noto Sans JP", sans-serif;
+    padding: 10px;
+    background-color: #388E3C;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  button:hover {
+    background-color: #4CAF50;
+  }
+
+  .create-account {
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  .create-account a {
+    color: white;
+    text-decoration: none;
+  }
+
+  .create-account a:hover {
+    text-decoration: underline;
+  }
+  .show-password {
+    color: white;
+    display: flex;
+    align-items: center;
+    margin-top: -10px;
+    margin-bottom: 15px;
+  }
+
+  .show-password input {
+    margin-right: 5px;
+  }

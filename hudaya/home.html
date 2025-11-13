@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ホーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen font-sans">
+    <div class="w-full max-w-2xl p-8 space-y-8 bg-gray-800 rounded-lg shadow-xl text-center">
+        <div>
+            <h1 id="welcome-message" class="text-3xl font-bold text-indigo-400">ようこそ！</h1>
+            <p class="mt-2 text-gray-400">ここからゲームを開始、または参加してください。</p>
+        </div>
+
+        <button id="scan-qr-btn" class="w-full py-4 px-6 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+            ゲームに参加 (QRコードをスキャン)
+        </button>
+
+        <div class="relative">
+            <div class="absolute inset-0 flex items-center" aria-hidden="true"><div class="w-full border-t border-gray-600"></div></div>
+            <div class="relative flex justify-center"><span class="px-2 bg-gray-800 text-sm text-gray-400">または</span></div>
+        </div>
+
+        <form id="join-game-form" class="space-y-4 hidden">
+            <div>
+                <label for="room-id-input" class="sr-only">ルームID</label>
+                <input type="text" id="room-id-input" placeholder="GMから共有されたルームIDを入力" required class="block w-full px-3 py-3 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <button type="submit" class="w-full py-3 px-6 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-gray-700 hover:bg-gray-600">
+                IDで参加する
+            </button>
+        </form>
+        <button id="manual-input-toggle" class="text-sm text-indigo-400 hover:text-indigo-300">手動でルームIDを入力する</button>
+
+        <a href="new_game.html" class="w-full block text-center py-3 px-6 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-green-600 hover:bg-green-700">
+            ゲームを作成 (GM専用)
+        </a>
+        <hr class="border-gray-600">
+        <div class="flex flex-col items-center space-y-4">
+            <a href="mypage.html" class="font-medium text-indigo-400 hover:text-indigo-300">マイページ (ニックネーム設定)</a>
+            <button id="logout-button" class="text-sm text-gray-400 hover:text-white">ログアウト</button>
+        </div>
+    </div>
+
+    <div id="qr-scanner-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-4 rounded-lg shadow-xl w-11/12 max-w-lg">
+            <h3 class="text-lg font-bold mb-2 text-center">QRコードを枠内に表示してください</h3>
+            <div id="qr-reader" class="w-full rounded-md overflow-hidden"></div>
+            <button id="close-scanner-btn" class="mt-4 w-full py-2 px-4 bg-red-600 hover:bg-red-700 rounded-md">キャンセル</button>
+        </div>
+    </div>
+
+    <script>
+        const welcomeMessage = document.getElementById('welcome-message');
+        const logoutButton = document.getElementById('logout-button');
+        const joinGameForm = document.getElementById('join-game-form');
+        const roomIdInput = document.getElementById('room-id-input');
+        const manualInputToggle = document.getElementById('manual-input-toggle');
+        const scanQrBtn = document.getElementById('scan-qr-btn');
+        const qrScannerModal = document.getElementById('qr-scanner-modal');
+        const closeScannerBtn = document.getElementById('close-scanner-btn');
+
+        let html5QrCode = null;
+
+        // --- ページ読み込み時の認証処理 ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = window.location.origin + '/login.html';
+                return;
+            }
+
+            try {
+                // FIX: Use an absolute URL for the fetch request
+                const response = await fetch(window.location.origin + '/api/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    // トークンが無効または期限切れの場合
+                    localStorage.removeItem('token');
+                    window.location.href = window.location.origin + '/login.html';
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    const nickname = data.user.nickname || data.user.email;
+                    welcomeMessage.textContent = `ようこそ、${nickname}さん！`;
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                console.error('Failed to fetch user data:', error);
+                localStorage.removeItem('token');
+                window.location.href = window.location.origin + '/login.html';
+            }
+        });
+
+        // --- ユーザー情報を画面に表示 ---
+        function displayUserInfo(user) {
+            const displayName = user.nickname || user.email;
+            userInfoSpan.textContent = `${displayName} としてログイン中`;
+            welcomeMessage.textContent = `ようこそ、${displayName}さん！`;
+            
+            // ローディング表示を消して、メインコンテンツを表示
+            loadingSpinner.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+        }
+
+        // --- ログアウト処理 ---
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = window.location.origin + '/login.html';
+        });
+
+        // ★★★ ここから修正 ★★★
+        joinGameForm.addEventListener('submit', async (event) => { // async 追加
+            event.preventDefault();
+            const roomId = roomIdInput.value.trim();
+            if (!roomId) return;
+
+            // roomIdからgameTypeを取得するAPIを叩く
+            try {
+                const token = localStorage.getItem('token');
+                // gameManager.js に新設するAPIを叩く
+                const response = await fetch(`${window.location.origin}/api/games/info/${roomId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `[${response.status}]`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success && data.gameType) {
+                    // 取得したgameTypeに基づいて正しいゲームURLに遷移
+                    window.location.href = `${window.location.origin}/games/${data.gameType}/${data.gameType}.html?roomId=${roomId}`;
+                } else {
+                    throw new Error(data.message || 'ルーム情報が見つかりません。');
+                }
+            } catch (error) {
+                console.error('Failed to get game info:', error);
+                alert(`ルーム参加エラー: ${error.message}`);
+            }
+        });
+        // ★★★ ここまで修正 ★★★
+        
+        // 手動入力フォームの表示切り替え
+        manualInputToggle.addEventListener('click', () => {
+            joinGameForm.classList.toggle('hidden');
+            manualInputToggle.textContent = joinGameForm.classList.contains('hidden') ? '手動でルームIDを入力する' : '手動入力を隠す';
+        });
+
+        // --- QRコードスキャン処理 ---
+        const onScanSuccess = (decodedText, decodedResult) => {
+            console.log(`Code matched = ${decodedText}`, decodedResult);
+            // スキャン成功したらカメラを止めて、そのURLに移動
+            html5QrCode.stop().then((ignore) => {
+                window.location.href = decodedText;
+            }).catch((err) => {
+                console.error("QR Code scanner stop failed", err);
+                window.location.href = decodedText; // エラーでも移動を試みる
+            });
+        };
+
+        const onScanFailure = (error) => {
+            // エラーはコンソールに表示するが、スキャンは続行
+            // console.warn(`Code scan error = ${error}`);
+        };
+
+        // スキャンボタンが押されたときの処理
+        scanQrBtn.addEventListener('click', () => {
+            qrScannerModal.classList.remove('hidden');
+            html5QrCode = new Html5Qrcode("qr-reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            // 背面カメラ(environment)を使ってスキャンを開始
+            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+                .catch(err => {
+                    console.error("Unable to start scanning.", err);
+                    alert("カメラの起動に失敗しました。カメラへのアクセスを許可しているか確認してください。");
+                    qrScannerModal.classList.add('hidden');
+                });
+        });
+
+        // スキャナーを閉じる処理
+        closeScannerBtn.addEventListener('click', () => {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch(err => console.error("QR Code scanner stop failed", err));
+            }
+            qrScannerModal.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>

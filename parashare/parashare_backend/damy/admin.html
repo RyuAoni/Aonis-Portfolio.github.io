@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>パラシェア - データ生成ツール</title>
+    <style>
+        body { font-family: sans-serif; display: flex; gap: 2em; padding: 1em; }
+        .panel { padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
+        .form-group { margin-bottom: 1em; }
+        label { display: block; font-weight: bold; }
+        select, input { width: 100%; padding: 8px; box-sizing: border-box; }
+        pre { background-color: #f0f0f0; padding: 1em; white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+
+<div class="panel">
+    <h2>傘を借りる</h2>
+    <div class="form-group">
+        <label for="borrow-umbrella">借りる傘 (貸出可能のみ)</label>
+        <select id="borrow-umbrella"></select>
+    </div>
+    <div class="form-group">
+        <label for="borrow-storage">借りる場所 (傘立て)</label>
+        <select id="borrow-storage"></select>
+    </div>
+    <div class="form-group">
+        <label for="user-id">ユーザーID</label>
+        <input type="number" id="user-id" value="1">
+    </div>
+    <button id="borrow-button">この条件で借りる</button>
+</div>
+
+<div class="panel">
+    <h2>傘を返す</h2>
+    <div class="form-group">
+        <label for="return-umbrella">返す傘 (貸出中のみ)</label>
+        <select id="return-umbrella"></select>
+    </div>
+    <div class="form-group">
+        <label for="return-storage">返す場所 (傘立て)</label>
+        <select id="return-storage"></select>
+    </div>
+    <button id="return-button">この条件で返す</button>
+</div>
+
+<div class="panel">
+    <h2>APIレスポンスログ</h2>
+    <pre id="log"></pre>
+</div>
+
+<script>
+    const selects = {
+        borrowUmbrella: document.getElementById('borrow-umbrella'),
+        borrowStorage: document.getElementById('borrow-storage'),
+        returnUmbrella: document.getElementById('return-umbrella'),
+        returnStorage: document.getElementById('return-storage'),
+    };
+    const logEl = document.getElementById('log');
+    let masterData = {};
+
+    // ログ出力
+    function log(message) {
+        logEl.textContent = JSON.stringify(message, null, 2);
+    }
+
+    // プルダウンを更新する関数
+    function populateSelects() {
+        // プルダウンを一旦空にする
+        Object.values(selects).forEach(sel => sel.innerHTML = '');
+
+        // 貸出可能な傘
+        masterData.umbrellas.filter(u => u.status === 1).forEach(u => {
+            selects.borrowUmbrella.innerHTML += `<option value="${u.qr_adress}">${u.name_umbrella} (ID: ${u.id_umbrella})</option>`;
+        });
+        // 貸出中の傘
+        masterData.umbrellas.filter(u => u.status === 2).forEach(u => {
+            selects.returnUmbrella.innerHTML += `<option value="${u.qr_adress}">${u.name_umbrella} (ID: ${u.id_umbrella})</option>`;
+        });
+        // 傘立て
+        masterData.storages.forEach(s => {
+            const option = `<option value="${s.id_storage}" data-lat="${s.adress_latitude}" data-lon="${s.adress_longitude}">${s.storage_name} (ID: ${s.id_storage})</option>`;
+            selects.borrowStorage.innerHTML += option;
+            selects.returnStorage.innerHTML += option;
+        });
+    }
+
+    // データをサーバーから取得してプルダウンを初期化する関数
+    async function refreshMasterData() {
+        try {
+            const response = await fetch('get_master_data.php');
+            const result = await response.json();
+            if (result.ok) {
+                masterData = result;
+                populateSelects();
+                log({ message: 'マスタデータを更新しました。' });
+            } else {
+                log(result);
+            }
+        } catch (e) {
+            log({ error: 'マスタデータの取得に失敗しました。', detail: e.toString() });
+        }
+    }
+    
+    // 「借りる」ボタンの処理
+    document.getElementById('borrow-button').addEventListener('click', async () => {
+        const qr_address = selects.borrowUmbrella.value;
+        const selectedStorageOption = selects.borrowStorage.options[selects.borrowStorage.selectedIndex];
+        const latitude = selectedStorageOption.dataset.lat;
+        const longitude = selectedStorageOption.dataset.lon;
+        const id_user = document.getElementById('user-id').value;
+
+        if (!qr_address || !id_user) {
+            log({ error: '借りる傘とユーザーIDを選択してください。' });
+            return;
+        }
+
+        const body = { qr_address, id_user: parseInt(id_user), latitude: parseFloat(latitude), longitude: parseFloat(longitude) };
+        log({ sending: '../parashere/borrow.php', body });
+
+        try {
+            const response = await fetch('../parashere/borrow.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const result = await response.json();
+            log(result);
+            if(result.ok) await refreshMasterData(); // 成功したらプルダウンを更新
+        } catch (e) {
+            log({ error: '通信に失敗しました。', detail: e.toString() });
+        }
+    });
+
+    // 「返す」ボタンの処理
+    document.getElementById('return-button').addEventListener('click', async () => {
+        const qr_address = selects.returnUmbrella.value;
+        const id_storage = selects.returnStorage.value;
+        const id_user = document.getElementById('user-id').value; // 返却者も同じユーザーIDと仮定
+
+        if (!qr_address || !id_user || !id_storage) {
+            log({ error: '返す傘、返す場所、ユーザーIDを選択してください。' });
+            return;
+        }
+        
+        // 返却場所の座標を現在位置として送信
+        const selectedStorageOption = selects.returnStorage.options[selects.returnStorage.selectedIndex];
+        const latitude = selectedStorageOption.dataset.lat;
+        const longitude = selectedStorageOption.dataset.lon;
+        
+        const body = { qr_address, id_user: parseInt(id_user), id_storage: parseInt(id_storage), latitude: parseFloat(latitude), longitude: parseFloat(longitude) };
+        log({ sending: 'return_for_admin.php', body });
+
+        try {
+            const response = await fetch('return_for_admin.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const result = await response.json();
+            log(result);
+            if(result.ok) await refreshMasterData(); // 成功したらプルダウンを更新
+        } catch (e) {
+            log({ error: '通信に失敗しました。', detail: e.toString() });
+        }
+    });
+
+    // ページ読み込み時にマスタデータを取得
+    document.addEventListener('DOMContentLoaded', refreshMasterData);
+</script>
+</body>
+</html>

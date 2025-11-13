@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>トランプ勝負</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        /* (style タグ内は変更なし) */
+        body {
+          font-family: "Comic Sans MS", sans-serif;
+          text-align: center;
+          background-color: #1f2937; 
+          color: white;
+          margin: 0;
+          overflow: hidden; 
+        }
+        h1, h2 {
+          text-shadow: 0 0 10px gold, 0 0 20px yellow;
+          animation: glow 2s infinite alternate;
+        }
+        @keyframes glow {
+          from { text-shadow: 0 0 5px gold; }
+          to { text-shadow: 0 0 20px orange; }
+        }
+
+        #game-board-area {
+            display: none;
+            width: 100%;
+            height: 100vh;
+            padding: 1rem;
+            box-sizing: border-box;
+            flex-direction: column;
+            background: linear-gradient(135deg, mediumslateblue, slateblue, royalblue);
+        }
+        
+        #player1-area, #player2-area {
+            flex: 1; 
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: rgba(0, 0, 0, 0.3); 
+            transition: all 0.3s ease; 
+        }
+        #battlefield {
+            flex-basis: 150px; 
+            flex-shrink: 0;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+        }
+
+        #player1-hand, #player2-hand {
+          margin: 10px;
+        }
+        
+        .hand-row {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 10px;
+          margin: 5px 0;
+          min-height: 130px; 
+        }
+
+        #p1-played-status, #p2-played-status {
+            font-size: 1.5rem;
+            color: #f59e0b;
+            font-weight: bold;
+            display: none; 
+            min-height: 270px; 
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+          width: 90px;
+          height: 126px; 
+          border-radius: 8px;
+          cursor: pointer;
+          transition: transform 0.2s;
+          border: 2px solid #a1a1aa;
+          background-color: #3f3f46;
+        }
+        
+        .card:not(.disabled-card):not(.face-down-card):not(.battle-card):hover { 
+            transform: translateY(-10px); 
+            border-color: #f4f4f5;
+        }
+        .face-down-card { 
+            cursor: default; 
+            width: 90px;
+            height: 126px;
+        }
+        .battle-card { cursor: default; }
+
+        .disabled-card { 
+            cursor: not-allowed; 
+            opacity: 0.6; 
+        }
+
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); }
+        
+        .game-modal-content {
+            background-color: #2c2a4a; 
+            border: 1px solid #f59e0b; 
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen">
+
+    <div id="lobby-area" class="w-full max-w-4xl p-8 space-y-6 bg-gray-800 rounded-lg shadow-2xl border border-gray-700">
+         <div class="text-center">
+            <h1 class="text-4xl font-bold text-indigo-400">トランプ勝負</h1>
+            <p class="text-gray-400">ルームID: <span id="room-id-display" class="font-mono bg-gray-700 p-1 rounded"></span></p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-1 bg-gray-900 p-4 rounded-lg"><h2 class="text-xl font-semibold mb-4 border-b border-gray-600 pb-2">参加者リスト</h2><ul id="player-list" class="space-y-2"></ul></div>
+            <div id="gm-panel" class="md:col-span-2 bg-gray-900 p-4 rounded-lg hidden">
+                <h2 class="text-xl font-semibold mb-4">ゲーム設定 (GM専用)</h2>
+                <div class="space-y-4">
+                    <p class="text-gray-400">このゲームは5ラウンド固定です。</p>
+                </div>
+                <button id="start-game-btn" class="mt-6 w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700">ゲーム開始</button>
+            </div>
+            <div id="player-wait-message" class="md:col-span-2 flex items-center justify-center bg-gray-900 p-4 rounded-lg"><p class="text-gray-400 text-lg">参加者を待っています...</p></div>
+        </div>
+    </div>
+
+    <div id="game-board-area" class="flex">
+        
+        <div id="player2-area" class="player-container">
+            <h2 id="p2-label">プレイヤー2の手札</h2>
+            <div id="p2-played-status" style="display: none;">選択済み...</div> 
+            <div id="player2-hand">
+                <div id="p2-hand-row1" class="hand-row"></div>
+                <div id="p2-hand-row2" class="hand-row"></div>
+            </div>
+        </div>
+        
+        <div id="battlefield">
+            <h2>Round <span id="round-number">1</span></h2>
+            <p id="battle-info-text" class="text-xl">カードを選択してください</p> 
+            <div id="battle-cards">
+            </div>
+        </div>
+        
+        <div id="player1-area" class="player-container">
+            <h2 id="p1-label">プレイヤー1の手札</h2>
+            <div id="p1-played-status" style="display: none;">選択済み...</div>
+            <div id="player1-hand">
+                <div id="p1-hand-row1" class="hand-row"></div>
+                <div id="p1-hand-row2" class="hand-row"></div>
+            </div>
+        </div>
+
+        <div id="score-display" class="fixed bottom-0 left-0 w-full bg-gray-900 bg-opacity-80 p-3 text-center z-50">
+          <span class="font-bold text-lg">スコア:</span>
+          <span id="p1-name-score">P1: 0</span>
+          <span class="mx-4">vs</span>
+          <span id="p2-name-score">P2: 0</span>
+        </div>
+    </div>
+
+    <div id="result-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="game-modal-content rounded-lg shadow-xl p-6 w-full max-w-md text-center">
+            <h2 id="result-title" class="text-3xl font-bold text-yellow-400 mb-4 h-10">勝負！</h2> 
+            <div id="result-battle-cards" class="flex justify-center gap-4 my-4"></div>
+            <p class="text-xl font-semibold mb-6 h-8">合計スコア: <span id="result-score" class="text-yellow-400"></span></p> 
+            <button id="next-round-btn" class="hidden mt-4 px-6 py-2 text-md font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">次のラウンドへ</button>
+            <button id="close-result-btn" class="mt-4 px-6 py-2 text-md font-bold text-white bg-gray-600 rounded-lg hover:bg-gray-700 transition-colors">閉じる</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- DOM Elements ---
+        // (変更なし)
+        const lobbyArea = document.getElementById('lobby-area');
+        const gameBoardArea = document.getElementById('game-board-area');
+        const roomIdDisplay = document.getElementById('room-id-display');
+        const playerList = document.getElementById('player-list');
+        const gmPanel = document.getElementById('gm-panel');
+        const playerWaitMessage = document.getElementById('player-wait-message');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const p1Area = document.getElementById('player1-area');
+        const p1Label = document.getElementById('p1-label');
+        const p1Hand = document.getElementById('player1-hand'); 
+        const p1HandRow1 = document.getElementById('p1-hand-row1'); 
+        const p1HandRow2 = document.getElementById('p1-hand-row2'); 
+        const p1PlayedStatus = document.getElementById('p1-played-status'); 
+        const p2Area = document.getElementById('player2-area');
+        const p2Label = document.getElementById('p2-label');
+        const p2Hand = document.getElementById('player2-hand'); 
+        const p2HandRow1 = document.getElementById('p2-hand-row1'); 
+        const p2HandRow2 = document.getElementById('p2-hand-row2'); 
+        const p2PlayedStatus = document.getElementById('p2-played-status'); 
+        const roundNumber = document.getElementById('round-number');
+        const battleCards = document.getElementById('battle-cards');
+        const battleInfoText = document.getElementById('battle-info-text'); 
+        const scoreDisplay = document.getElementById('score-display');
+        const p1NameScore = document.getElementById('p1-name-score');
+        const p2NameScore = document.getElementById('p2-name-score');
+        const resultModal = document.getElementById('result-modal');
+        const resultTitle = document.getElementById('result-title');
+        const resultBattleCards = document.getElementById('result-battle-cards');
+        const resultScore = document.getElementById('result-score');
+        const nextRoundBtn = document.getElementById('next-round-btn');
+        const closeResultBtn = document.getElementById('close-result-btn');
+
+        // --- State ---
+        // (変更なし)
+        let currentUser = null;
+        let myRole = 'spectator'; 
+        let myPlayerId = null; 
+        let playersMap = {}; 
+        let p1Nickname = 'P1'; 
+        let p2Nickname = 'P2'; 
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('roomId');
+        if (roomIdDisplay) roomIdDisplay.textContent = roomId;
+        const socket = io();
+
+        // --- Helper: カード画像パス (変更なし) ---
+        function getCardImage(cardName, isFaceDown = false) {
+            if (isFaceDown) {
+                return "/images/cards/card-back.png";
+            }
+            return `/images/cards/${cardName}.png`;
+        }
+
+        // --- Helper: カード要素作成 (変更なし) ---
+        function renderCard(cardData, isHandCard = false, isFaceDown = false, isDisabled = false) {
+            const img = document.createElement("img");
+            img.src = getCardImage(cardData ? cardData.name : null, isFaceDown);
+            img.className = "card";
+            if (isHandCard) img.dataset.cardId = cardData.id;
+            if (isFaceDown) img.classList.add("face-down-card");
+            if (!isHandCard && !isFaceDown) img.classList.add("battle-card");
+            if (isDisabled) img.classList.add("disabled-card");
+            return img;
+        }
+
+        // ★★★ ここからロジック修正 ★★★
+        // --- Socket.IO Event Listener ---
+        const handleBoardUpdate = ({ boardState, myHand, myRole: roleFromServer }) => {
+            lobbyArea.classList.add('hidden');
+            gameBoardArea.style.display = 'flex'; 
+
+            myRole = roleFromServer;
+            playersMap = {};
+            boardState.players.forEach(p => { playersMap[p.id] = p.nickname; });
+
+            const me = (myRole === 'player' && currentUser) ? boardState.players.find(p => p.id === currentUser.id) : null;
+            myPlayerId = me ? me.id : null;
+
+            const player1 = boardState.players[0];
+            const player2 = boardState.players[1];
+            
+            if (player1) p1Nickname = player1.nickname || 'P1';
+            if (player2) p2Nickname = player2.nickname || 'P2';
+
+            roundNumber.textContent = boardState.round;
+            
+            if (player1) p1NameScore.textContent = `${p1Nickname}: ${player1.score}`;
+            if (player2) p2NameScore.textContent = `${p2Nickname}: ${player2.score}`;
+
+            // 手札の行をクリア
+            p1HandRow1.innerHTML = '';
+            p1HandRow2.innerHTML = '';
+            p2HandRow1.innerHTML = '';
+            p2HandRow2.innerHTML = '';
+            
+            const iHavePlayed = me ? me.hasPlayed : false;
+            
+            // --- GM/観戦者ビュー ---
+            if (myRole !== 'player') {
+                p1Area.style.display = 'block'; // P1エリア表示
+                p2Area.style.display = 'block'; // P2エリア表示
+                
+                p1Label.textContent = `${p1Nickname} の手札`;
+                p2Label.textContent = `${p2Nickname} の手札`;
+
+                // P1の手札/ステータス
+                if (player1.hasPlayed) {
+                    p1PlayedStatus.style.display = 'flex';
+                    p1Hand.style.display = 'none';
+                } else {
+                    p1PlayedStatus.style.display = 'none';
+                    p1Hand.style.display = 'block';
+                    // 裏向きカードを3/2で表示
+                    for (let i = 0; i < player1.handCount; i++) {
+                        const cardEl = renderCard(null, false, true, true); // 裏向き・無効
+                        if (i < 3) p1HandRow1.appendChild(cardEl);
+                        else p1HandRow2.appendChild(cardEl);
+                    }
+                }
+                
+                // P2の手札/ステータス
+                if (player2.hasPlayed) {
+                    p2PlayedStatus.style.display = 'flex';
+                    p2Hand.style.display = 'none';
+                } else {
+                    p2PlayedStatus.style.display = 'none';
+                    p2Hand.style.display = 'block';
+                    // 裏向きカードを3/2で表示
+                    for (let i = 0; i < player2.handCount; i++) {
+                        const cardEl = renderCard(null, false, true, true); // 裏向き・無効
+                        if (i < 3) p2HandRow1.appendChild(cardEl);
+                        else p2HandRow2.appendChild(cardEl);
+                    }
+                }
+                
+            // --- プレイヤービュー ---
+            } else {
+                
+                let myPlayerData, myArea, myLabel, myHandContainer, myHandRow1, myHandRow2, myPlayedStatus;
+                let opponentArea;
+                
+                // 自分がP1かP2かを判定
+                if (me && me.id === player1.id) {
+                    myPlayerData = player1;
+                    myArea = p1Area;
+                    myLabel = p1Label;
+                    myHandContainer = p1Hand;
+                    myHandRow1 = p1HandRow1;
+                    myHandRow2 = p1HandRow2;
+                    myPlayedStatus = p1PlayedStatus;
+                    opponentArea = p2Area;
+                } else {
+                    myPlayerData = player2;
+                    myArea = p2Area;
+                    myLabel = p2Label;
+                    myHandContainer = p2Hand;
+                    myHandRow1 = p2HandRow1;
+                    myHandRow2 = p2HandRow2;
+                    myPlayedStatus = p2PlayedStatus;
+                    opponentArea = p1Area;
+                }
+                
+                // 相手のエリアを非表示
+                opponentArea.style.display = 'none';
+                // 自分のエリアを表示
+                myArea.style.display = 'block';
+
+                myLabel.textContent = `あなた (${myPlayerData.nickname}) の手札`;
+
+                // 自分の手札/ステータス
+                if (myPlayerData.hasPlayed) {
+                    myPlayedStatus.style.display = 'flex';
+                    myHandContainer.style.display = 'none';
+                } else {
+                    myPlayedStatus.style.display = 'none';
+                    myHandContainer.style.display = 'block';
+                    // 自分の手札を3/2で描画 (表向き・クリック可能)
+                    myHand.forEach((card, index) => {
+                        const cardEl = renderCard(card, true, false, false); // 表向き・有効
+                        if (index < 3) {
+                            myHandRow1.appendChild(cardEl);
+                        } else {
+                            myHandRow2.appendChild(cardEl);
+                        }
+                    });
+                }
+            }
+            // ★★★ ここまでロジック修正 ★★★
+            
+            // バトルフィールドのテキスト更新 (変更なし)
+            if (player1.hasPlayed && player2.hasPlayed) {
+                battleInfoText.textContent = "両者選択済み... 結果待ち";
+            } else if (iHavePlayed) {
+                battleInfoText.textContent = "相手の選択を待っています...";
+            } else {
+                battleInfoText.textContent = "カードを選択してください";
+            }
+        };
+
+        // --- Document Ready (変更なし) ---
+        document.addEventListener('DOMContentLoaded', () => {
+             if (!socket) {
+                console.error("Socket is not initialized!");
+                alert("接続エラーが発生しました。ページを再読み込みしてください。");
+                return;
+            }
+            const token = localStorage.getItem('token');
+            if (!token || !roomId) {
+                window.location.href = window.location.origin + '/home.html';
+                return;
+            }
+            try {
+                currentUser = JSON.parse(atob(token.split('.')[1]));
+            } catch (e) {
+                localStorage.removeItem('token');
+                window.location.href = window.location.origin + '/login.html';
+                return;
+            }
+            socket.emit('joinLobby', { token, roomId });
+        });
+        
+        // --- Socket.IO Event Listeners ---
+        if (socket) {
+            socket.on('gameStarted', handleBoardUpdate);
+            socket.on('updateBoard', handleBoardUpdate);
+            
+            // ロビー更新 (変更なし)
+            socket.on('updateLobby', ({ participants }) => {
+                if (!playerList) return;
+                playerList.innerHTML = '';
+                let isGmInLobby = false;
+                participants.forEach(p => {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center justify-between p-2 bg-gray-700 rounded';
+                    const nicknameSpan = document.createElement('span');
+                    nicknameSpan.textContent = p.nickname || `Player ${p.id}`;
+                    if (currentUser && p.id === currentUser.id) nicknameSpan.className = "font-bold text-indigo-400";
+                    const roleSpan = document.createElement('span');
+                    if (p.role === 'gm') {
+                        roleSpan.textContent = 'GM';
+                        roleSpan.className = 'text-xs bg-yellow-500 text-gray-900 font-bold px-2 py-1 rounded-full';
+                        if (currentUser && p.id === currentUser.id) isGmInLobby = true;
+                    } else {
+                        roleSpan.textContent = p.role === 'player' ? 'Player' : 'Spectator';
+                        roleSpan.className = `text-xs ${p.role === 'player' ? 'bg-blue-500' : 'bg-gray-500'} px-2 py-1 rounded-full`;
+                    }
+                    li.appendChild(nicknameSpan);
+                    li.appendChild(roleSpan);
+                    playerList.appendChild(li);
+                });
+                if (gmPanel && playerWaitMessage) {
+                    if (isGmInLobby) {
+                        gmPanel.classList.remove('hidden');
+                        playerWaitMessage.classList.add('hidden');
+                    } else {
+                        gmPanel.classList.add('hidden');
+                        playerWaitMessage.classList.remove('hidden');
+                    }
+                }
+            });
+            
+            // roundEnd (変更なし)
+            socket.on('roundEnd', ({ winner, scoreText, p1Card, p2Card, isFinalRound, gmId }) => {
+                
+                resultTitle.textContent = '勝負！';
+                resultScore.textContent = ''; 
+                
+                resultBattleCards.innerHTML = ''; 
+                
+                const p1CardDiv = document.createElement('div');
+                p1CardDiv.className = 'text-center';
+                const p1NameEl = document.createElement('p');
+                p1NameEl.className = 'font-bold text-sm mb-1';
+                p1NameEl.textContent = p1Nickname; 
+                p1CardDiv.appendChild(p1NameEl);
+                p1CardDiv.appendChild(renderCard(p1Card, false, false));
+                
+                const p2CardDiv = document.createElement('div');
+                p2CardDiv.className = 'text-center';
+                const p2NameEl = document.createElement('p');
+                p2NameEl.className = 'font-bold text-sm mb-1';
+                p2NameEl.textContent = p2Nickname; 
+                p2CardDiv.appendChild(p2NameEl);
+                p2CardDiv.appendChild(renderCard(p2Card, false, false));
+                
+                resultBattleCards.appendChild(p1CardDiv);
+                resultBattleCards.appendChild(p2CardDiv);
+
+                resultModal.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    resultTitle.textContent = winner;
+                    resultScore.textContent = scoreText;
+
+                    const isGM = myRole === 'gm';
+                    if (isGM) {
+                        nextRoundBtn.classList.remove('hidden');
+                        closeResultBtn.classList.add('hidden');
+                        nextRoundBtn.textContent = isFinalRound ? '最終結果へ' : '次のラウンドへ';
+                    } else {
+                        nextRoundBtn.classList.add('hidden');
+                        closeResultBtn.classList.remove('hidden');
+                    }
+                }, 3000); 
+
+            });
+
+            // gameOver (変更なし)
+            socket.on('gameOver', ({ results }) => {
+                localStorage.setItem('gameResults', JSON.stringify(results));
+                window.location.href = window.location.origin + '/result.html';
+            });
+            
+            socket.on('error', (message) => { alert(`エラー: ${message}`); });
+        }
+
+        // --- UI Event Listeners ---
+        // (startGameBtn 変更なし)
+        if (startGameBtn) startGameBtn.addEventListener('click', () => {
+             if (!socket) return alert('エラーが発生しました。');
+             socket.emit('startGame', { roomId, settings: {}, gameType: 'suuji-battle' });
+         });
+         
+        // (handleCardClick 変更なし)
+        function handleCardClick(event) {
+            if (myRole !== 'player') return;
+            const cardEl = event.target.closest('.card');
+            
+            const isP1HandCard = p1Hand.contains(cardEl);
+            const isP2HandCard = p2Hand.contains(cardEl);
+            
+            if (cardEl && (isP1HandCard || isP2HandCard) && !cardEl.classList.contains('disabled-card')) {
+                const cardId = cardEl.dataset.cardId; 
+                socket.emit('playCard', { roomId, cardId });
+            }
+        }
+        p1Hand.addEventListener('click', handleCardClick);
+        p2Hand.addEventListener('click', handleCardClick);
+
+        // (モーダルボタン 変更なし)
+        if (nextRoundBtn) nextRoundBtn.addEventListener('click', () => {
+             if (!socket) return alert('接続エラー');
+             socket.emit('nextRound', { roomId });
+             resultModal.classList.add('hidden');
+         });
+        if (closeResultBtn) closeResultBtn.addEventListener('click', () => {
+             resultModal.classList.add('hidden');
+         });
+
+    </script>
+</body>
+</html>

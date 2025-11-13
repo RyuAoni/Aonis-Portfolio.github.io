@@ -1,0 +1,348 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+
+body {
+    margin: 0;
+}
+
+#background {
+    position: relative;
+    width: 100vw;
+    height: 100svh;
+    background-color: rgb(87, 87, 87);
+    font-family: "Noto Sans JP", sans-serif;
+    font-weight: bold;
+}
+
+#choices {
+    position: absolute;
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    height: 100svh;
+    color: rgb(255, 255, 255);
+}
+
+.choice {
+    position: relative;
+    width: 100%;
+    height: 100svh;
+    background-color: #545454;
+}
+
+
+.choice-name {
+    position: absolute;
+    width: 100%;
+    top: 15%;
+    text-align: center;
+    font-size: 25px;
+}
+
+.choice-percent {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    top: 25%;
+    font-size: 50px;
+    font-family: "Roboto", sans-serif;
+    font-weight: 900;
+}
+
+.choice-percent div {
+    font-size: 25px;
+    height: 50px;
+    width: 22px;
+    display: flex;
+    align-items: end;
+    justify-content: center;
+}
+
+.guideArrow {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50px;
+    margin: 0 auto;
+    z-index: 4;
+}
+
+#titleBar {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 5svh;
+    top: 3%;
+    z-index: 1;
+}
+
+#title {
+    position: absolute;
+    font-size: 19px;
+    color: #222222;
+    z-index: 2;
+}
+
+#titleBar img {
+    position: absolute;
+    width: 100%;
+    z-index: 1;
+}
+
+#canvasBack {
+    position: absolute;
+    width: 100vw;
+    height: 100svh;
+    z-index: 2;
+}
+
+#filter {
+    display: none;
+    position: absolute;
+    width: 100vw;
+    height: 100svh;
+    background-color: rgba(31, 20, 11, 0.85);
+    z-index: 3;
+}
+
+#guideLetter {
+    position: absolute;
+    display: none;
+    width: 80%;
+    height: 100px;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    z-index: 4;
+}
+
+#guideLetter p {
+    color: #ffffff;
+    font-size: 20px;
+}
+
+#guideLetter span {
+    color: #ff8800;
+}
+
+#canvasFront {
+    position: absolute;
+    width: 100vw;
+    height: 40svh;
+    z-index: 6;
+}
+
+#startButton {
+    position: absolute;
+    width: 170px;
+    height: 170px;
+    background-color: rgb(255, 255, 255);
+    border: 8px solid rgb(255, 255, 255);
+    border-radius: 50%;
+    box-shadow: 0 10px 25px 0 rgba(0, 0, 0, .5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    right: 0;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    z-index: 6;
+}
+
+#startButton p {
+    font-size: 50px;
+    font-family: "Roboto", sans-serif;
+    font-weight: 900;
+    background: linear-gradient(90deg, #FF5900, #5200FF);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+    text-align: center;
+}
+
+/* ブーストボタン */
+
+#boostButton {
+    position: absolute;
+    display: none;
+    z-index: 11;
+    background-color: #ffffff;
+    border-radius: 10px;
+    width: 90%;
+    left: 0;
+    right: 0;
+    bottom: 20px;
+    margin: auto;
+    overflow: hidden;
+}
+
+#boostTitle img {
+    width: 95%;
+    display: block;
+    margin: 20px auto 0 auto;
+}
+
+.explanation {
+    font-size: 5vw;
+    margin: 0 auto;
+}
+
+#detailButton {
+    background-color: #ff4000;
+    width: 90%;
+    height: 60px;
+    margin: 20px auto;
+    border-radius: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#detailButton p {
+    font-size: 20px;
+    font-family: "Roboto", sans-serif;
+    margin: 0;
+    color:#ffffff;
+}
+
+#trashImage {
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* 撮影フェーズ */
+
+#boostContentCamera {
+    display: flex;
+    flex-flow: column;
+    justify-content: space-around;
+    height: 0;
+    width: 90%;
+    overflow: auto;
+    transition: all 0.5s;
+    margin: 0 auto;
+}
+
+#cameraButton {
+    background-color: #ff7c11;
+    width: 100%;
+    height: 60px;
+    margin: 10px auto 0 auto;
+    border-radius: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#cameraButton p {
+    font-size: 20px;
+    margin: 0;
+    color:#ffffff
+}
+
+/* 状態報告フェーズ */
+
+#boostContentStatus {
+    display: none;
+    flex-flow: column;
+    justify-content: space-around;
+    height: 500px;
+    width: 90%;
+    overflow: auto;
+    transition: all 1s;
+    margin: 0 auto;
+}
+
+.statusContent {
+    display: flex;
+    color: #ffffff;
+    border-radius: 5px;
+    margin: 10% auto 5% auto;
+}
+
+.left {
+    width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.left img {
+    width: 90%;
+}
+
+.right {
+    margin: 0 50px 0 auto;
+}
+
+.statusTitle {
+    font-size: 25px;
+    margin: 15px 0 0 0;
+}
+
+.statusDetail {
+    font-size: 13px;
+    margin: 5px 0 20px 0;
+}
+
+input[type="radio"][value="ok"]:checked + label div {
+    background-color: #00aeff;
+}
+
+input[type="radio"][value="full"]:checked + label div {
+    background-color: #dc1515;
+}
+
+input[type="radio"][value="broken"]:checked + label div {
+    background-color: #8800ff;
+}
+
+input[type="radio"] + label div {
+    background-color: #525252;
+}
+
+input[type="radio"] {
+    display: none;
+}
+
+#lastWord {
+    display: none;
+    position: absolute;
+    width: 90%;
+    height: 200px;
+    background-color: rgb(255, 255, 255);
+    border-radius: 10px;
+    box-shadow: 0 10px 25px 0 rgba(0, 0, 0, .5);
+    align-items: center;
+    justify-content: center;
+    right: 0;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    z-index: 15;
+}
+
+#lastWord p {
+    font-size: 50px;
+    font-family: "Roboto", sans-serif;
+    font-weight: 900;
+    background: linear-gradient(90deg, #FF5900, #5200FF);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 2px;
+    text-align: center;
+}

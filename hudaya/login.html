@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ログイン</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+    <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg shadow-xl">
+        <h2 class="text-3xl font-bold text-center text-indigo-400">ログイン</h2>
+        <form id="login-form" class="space-y-6">
+            <div>
+                <label for="email" class="block text-sm font-medium">メールアドレス</label>
+                <input id="email" name="email" type="email" autocomplete="email" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium">パスワード</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    ログイン
+                </button>
+            </div>
+        </form>
+        <div id="message" class="text-center text-sm min-h-[20px]"></div>
+        <div class="text-center text-sm">
+            <a href="new_account.html" class="font-medium text-indigo-400 hover:text-indigo-300">アカウントをお持ちでないですか？ 新規登録</a>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('login-form');
+        const messageDiv = document.getElementById('message');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            messageDiv.textContent = '';
+
+            const email = form.email.value;
+            const password = form.password.value;
+
+            try {
+                // FIX: Use an absolute URL for the fetch request
+                const response = await fetch(window.location.origin + '/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    // FIX: Use an absolute URL for redirection
+                    window.location.href = window.location.origin + '/home.html';
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                messageDiv.textContent = `ログインエラー: ${error.message}`;
+                messageDiv.style.color = '#f87171';
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POOI mappage</title>
+    <link rel="stylesheet" href="sponsor.css">
+</head>
+<body>
+    <input id="pac-input" type="text" placeholder="Search Box">
+    <div id="map"></div>
+    <!-- トグルアコーディオンボタン -->
+    <div id="detailButton">
+        <div class="toggle-button-container" id="toggle-button-container">
+            <div class="toggle-button" id="toggle-button-editvote"><p>投票編集</div></a>
+            <div class="toggle-button" id="toggle-button-editlogo"><p>ロゴ編集</div></a>
+            <div class="toggle-button" id="toggle-button-data"><p>データ</div></a>
+        </div>
+        <div id="detailContainer">
+            <div id="detailContainerEditVote" class="detail-container">
+                <div class="title">
+                    <div class="input-name">
+                        <span>投票タイトル</span>
+                    </div>
+                    <div class="input-field-trash">
+                        <input type="text" id="title-input">
+                    </div>
+                </div>
+                <div class="choice">
+                    <div class="input-name">
+                        <span>選択肢</span>
+                        <input type="color" value="#ff6600">
+                        <img class="delete" src="../imgs/delete.svg">
+                    </div>
+                    <div class="input-field-trash">
+                        <input type="text">
+                    </div>
+                </div>
+                <div class="choice">
+                    <div class="input-name">
+                        <span>選択肢</span>
+                        <input type="color" value="#7700ff">
+                        <img class="delete" src="../imgs/delete.svg">
+                    </div>
+                    <div class="input-field-trash">
+                        <input type="text">
+                    </div>
+                </div>
+                <button id="add-choice" class="container-button">選択肢を追加する</button>
+                <button id="set-button" class="container-button" disabled>投票内容を確定する</button>
+            </div>
+            <div id="detailContainerEditLogo" class="detail-container">
+                <div class="title">
+                    <div class="input-name">
+                        <span>ロゴを設定してください</span>
+                    </div>
+                    <div class="file-upload">
+                        <span id="file-name"></span>
+                        <label for="file-upload">
+                          ファイル選択
+                        </label>
+                        <input type="file" id="file-upload">
+                    </div>
+                </div>
+                <div id="preview-container"><span>プレビュー</span></div>
+            
+                <button id="setting-logo" class="container-button">確定する</button>
+            </div>
+            <div id="detailContainerData" class="detail-container">
+                <select id="data-select">
+                    <option value="data1">投票結果（一人一票計算）</option>
+                    <option value="data2">投票結果（二倍投票込み）</option>
+                </select>
+                <div class="chart-container">
+                    <canvas id="myDonutChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCb_zxonRgXneL23LUp2kM6RZhUeaZIjwY&libraries=places&callback=initAutocomplete" async defer></script>
+    <script src="sponsor.js"></script>
+</body>
+</html>

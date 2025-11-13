@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新規ゲーム作成</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen font-sans">
+    <div class="w-full max-w-lg p-8 space-y-6 bg-gray-800 rounded-lg shadow-xl border border-gray-700">
+
+        <form id="create-game-form">
+            <h2 class="text-3xl font-bold text-center text-indigo-400">新規ゲーム作成</h2>
+            <div class="mt-6">
+                <label for="game-type" class="block text-sm font-medium">ゲームの種類</label>
+                <select id="game-type" name="game-type" class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="koikoi">花札こいこい</option>
+                    <option value="suuji-battle">トランプ勝負</option>
+                    <option value="blackjack">ブラックジャック</option>
+                    <option value="poker">ポーカー</option>
+                    <option value="babanuki">ババ抜き</option>
+                </select>
+            </div>
+            <div class="mt-8">
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                    ゲームを作成
+                </button>
+            </div>
+        </form>
+
+        <div id="qr-code-area" class="hidden text-center">
+            <h2 class="text-2xl font-bold text-green-400">ゲーム作成完了！</h2>
+            <p class="mt-2 text-gray-400">プレイヤーは以下のQRコードを読み取って参加してください。</p>
+            <div class="mt-4 flex justify-center bg-white p-4 rounded-md">
+                <div id="qr-code"></div>
+            </div>
+            <p class="mt-4 text-sm text-gray-500">ルームID: <span id="room-id-display" class="font-mono"></span></p>
+            <a id="join-game-link" href="#" class="mt-6 block w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-green-600 hover:bg-green-700">
+                ゲーム待機画面へ
+            </a>
+        </div>
+        
+        <div id="message" class="text-center text-red-400 min-h-[20px]"></div>
+
+    </div>
+
+    <script>
+        // (JavaScript部分は前回の修正から変更なし)
+        const createGameForm = document.getElementById('create-game-form');
+        const qrCodeArea = document.getElementById('qr-code-area');
+        const qrCodeContainer = document.getElementById('qr-code');
+        const roomIdDisplay = document.getElementById('room-id-display');
+        const joinGameLink = document.getElementById('join-game-link');
+        const messageDiv = document.getElementById('message');
+        let selectedGameType = 'koikoi'; 
+
+        createGameForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            messageDiv.textContent = '';
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = window.location.origin + '/login.html';
+                return;
+            }
+            
+            selectedGameType = document.getElementById('game-type').value; 
+
+            try {
+                const response = await fetch(window.location.origin + '/api/games/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ gameType: selectedGameType }) 
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    createGameForm.classList.add('hidden');
+                    qrCodeArea.classList.remove('hidden');
+                    
+                    roomIdDisplay.textContent = data.roomId;
+                    const joinUrl = `${window.location.origin}/games/${selectedGameType}/${selectedGameType}.html?roomId=${data.roomId}`;
+                    joinGameLink.href = joinUrl;
+
+                    qrCodeContainer.innerHTML = '';
+                    new QRCode(qrCodeContainer, {
+                        text: joinUrl,
+                        width: 200,
+                        height: 200,
+                        colorDark : "#000000",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+
+                } else {
+                    throw new Error(data.message);
+                }
+
+            } catch (error) {
+                console.error('Error creating game:', error);
+                messageDiv.textContent = `エラー: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

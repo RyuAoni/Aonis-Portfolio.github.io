@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap');
+
+/* ここは全体のデザイン */
+body {
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  background-color: #0F6A34;
+  font-family: "Noto Sans JP", sans-serif;
+}
+
+span{
+    color: white;
+    font-size: 30px;
+    text-align: center;
+}
+
+.login{
+  font-family: "Noto Sans JP", sans-serif;
+}
+
+button {
+  padding: 10px;
+  background-color: #388E3C;
+  color: white;
+  font-size: 15px;
+  width: 70%;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #4CAF50;
+}

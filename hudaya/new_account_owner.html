@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オーナーアカウント作成</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+    <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg shadow-xl">
+        <h2 class="text-3xl font-bold text-center text-indigo-400">オーナーアカウント作成</h2>
+        <form id="register-form" class="space-y-6">
+            <div>
+                <label for="email" class="block text-sm font-medium">メールアドレス</label>
+                <input id="email" name="email" type="email" autocomplete="email" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium">パスワード</label>
+                <input id="password" name="password" type="password" autocomplete="new-password" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="password-confirm" class="block text-sm font-medium">パスワード（確認用）</label>
+                <input id="password-confirm" name="password-confirm" type="password" autocomplete="new-password" required class="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    登録
+                </button>
+            </div>
+        </form>
+        <div id="message" class="text-center text-sm"></div>
+        <div class="text-center text-sm">
+            <a href="login.html" class="font-medium text-indigo-400 hover:text-indigo-300">既にアカウントをお持ちですか？ ログイン</a>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('register-form');
+        const messageDiv = document.getElementById('message');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault(); 
+            messageDiv.textContent = '';
+            
+            const email = form.email.value;
+            const password = form.password.value;
+            // FIX: Bracket notation is required for names with hyphens.
+            const passwordConfirm = form['password-confirm'].value;
+
+            if (password !== passwordConfirm) {
+                messageDiv.textContent = 'パスワードが一致しません。';
+                messageDiv.style.color = '#f87171';
+                return;
+            }
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password, role: 'owner' })
+                });
+                
+                const data = await response.json();
+
+                if (data.success) {
+                    messageDiv.textContent = data.message;
+                    messageDiv.style.color = '#4ade80';
+                    form.reset();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                messageDiv.textContent = `登録エラー: ${error.message}`;
+                messageDiv.style.color = '#f87171';
+            }
+        });
+    </script>
+</body>
+</html>

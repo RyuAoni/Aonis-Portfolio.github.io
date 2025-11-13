@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>傘立て登録</title>
+    <style>
+        body { font-family: sans-serif; }
+        .container { max-width: 500px; margin: 2em auto; padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
+        .form-group { margin-bottom: 1em; }
+        label { display: block; margin-bottom: 0.5em; }
+        input, textarea { width: 100%; padding: 0.5em; box-sizing: border-box; }
+        button { padding: 0.7em 1.5em; cursor: pointer; }
+        #message { margin-top: 1em; padding: 1em; border-radius: 4px; display: none; }
+        #message.success { background-color: #e0f2e9; color: #146c43; }
+        #message.error { background-color: #f8d7da; color: #842029; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>新しい傘立てを登録</h1>
+    <form id="storage-form">
+        <div class="form-group">
+            <label for="latitude">緯度</label>
+            <input type="number" step="any" id="latitude" name="latitude" required>
+        </div>
+        <div class="form-group">
+            <label for="longitude">経度</label>
+            <input type="number" step="any" id="longitude" name="longitude" required>
+        </div>
+        <div class="form-group">
+            <label for="name">傘立て名</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+            <label for="comment">コメント</label>
+            <textarea id="comment" name="comment" rows="4"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="address">住所</label>
+            <textarea type="text" id="address" name="address"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="max">最大容量</label>
+            <input type="number" id="max" name="max" required>
+        </div>
+        <button type="submit">登録する</button>
+    </form>
+    <div id="message"></div>
+</div>
+
+<script>
+    document.getElementById('storage-form').addEventListener('submit', function(event) {
+        event.preventDefault(); // デフォルトのフォーム送信をキャンセル
+
+        const messageDiv = document.getElementById('message');
+        const formData = new FormData(this);
+
+        // FormDataをJSONオブジェクトに変換
+        const data = {
+            latitude: parseFloat(formData.get('latitude')),
+            longitude: parseFloat(formData.get('longitude')),
+            name: formData.get('name'),
+            comment: formData.get('comment'),
+            address: formData.get('address'),
+            max: formData.get('max')
+        };
+
+        // バックエンドのPHPファイルにデータを送信
+        fetch('https://parashare.jp/register_storage.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.ok) {
+                messageDiv.textContent = result.message;
+                messageDiv.className = 'success';
+                document.getElementById('storage-form').reset(); // フォームをリセット
+            } else {
+                messageDiv.textContent = 'エラー: ' + result.error;
+                messageDiv.className = 'error';
+            }
+            messageDiv.style.display = 'block';
+        })
+        .catch(error => {
+            messageDiv.textContent = '通信エラーが発生しました。';
+            messageDiv.className = 'error';
+            messageDiv.style.display = 'block';
+        });
+    });
+</script>
+
+</body>
+</html>

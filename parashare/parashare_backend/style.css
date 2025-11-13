@@ -1,0 +1,141 @@
+/* ===== Base ===== */
+:root{
+  --green:#8AC75A;
+  --green-darker:#77B44C;
+  --text:#333;
+  --bg:#f0f2f5;
+}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  margin:0;
+  padding:0;
+  background:var(--bg);
+  color:var(--text);
+}
+
+/* 共通コンテナ */
+.container{ width:min(1200px,92%); margin-inline:auto; }
+
+/* 任意（フォーム用の残置スタイル） */
+h1{ color:#0062FF; text-align:center; }
+.form-container{ background:#fff; padding:20px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.1); }
+.form-group{ margin-bottom:15px; }
+label{ display:block; margin-bottom:8px; font-weight:600; }
+input,textarea,button{
+  width:100%; padding:12px; border:1px solid #ddd; border-radius:8px; box-sizing:border-box; font-size:16px;
+}
+textarea{ resize:vertical; height:100px; }
+button{ background:var(--green); color:#fff; border:none; cursor:pointer; margin-top:20px; font-size:18px; font-weight:bold; }
+button:hover,button:focus{ background:var(--green-darker); }
+.note{ font-size:14px; color:#777; text-align:center; margin-top:20px; }
+
+/* ===== Hero ===== */
+.hero{ position:relative; overflow:hidden; background:#fff; }
+.hero-background{
+  position:absolute; inset:0;
+  background:linear-gradient(180deg,rgba(138,199,90,.12) 0%,rgba(255,255,255,0) 60%);
+  pointer-events:none;
+}
+.hero .hero-content{
+  position:relative;
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  padding:72px 0 56px;
+}
+.hero-logo{ width:clamp(120px,18vw,220px); height:auto; display:block; margin-bottom:16px; }
+.hero-title{ font-size:clamp(28px,5vw,48px); line-height:1.2; margin:8px 0 12px; }
+.hero-title .highlight{ background:linear-gradient(transparent 60%,rgba(138,199,90,.35) 0); padding:0 .15em; }
+.hero-subtitle{ font-size:clamp(16px,2.4vw,18px); line-height:1.7; color:#444; margin:0 0 8px; }
+
+/* ===== DLボタン（緑固定＆縦ズレ解消） ===== */
+.hero .download-buttons,
+.howto .download-buttons,
+.cta .download-buttons{ display:flex; justify-content:center; margin-top:20px; }
+
+.download-btn{
+  display:flex; align-items:center; gap:12px;
+  max-width:100%; box-sizing:border-box;
+  padding:12px 20px; border-radius:12px;
+  text-decoration:none; color:#fff; background:var(--green);
+}
+.download-btn .fab.fa-android{ font-size:28px; line-height:1; flex:0 0 auto; }
+.download-btn .btn-text{ display:flex; flex-direction:column; line-height:1.15; white-space:normal; }
+.download-btn .btn-text small{ font-weight:600; margin-bottom:2px; opacity:.9; }
+.download-btn .btn-text strong{ font-weight:700; }
+
+/* 緑固定（クラスでも指定・念のため） */
+.download-btn.android-download{ background-color:var(--green) !important; border:1px solid rgba(0,0,0,.05); }
+.download-btn.android-download:hover,
+.download-btn.android-download:focus{ background-color:var(--green-darker) !important; }
+
+/* 小さめボタン（手順1） */
+.download-btn.small{ padding:10px 16px; }
+.download-btn.small .fab.fa-android{ font-size:22px; }
+.download-btn.android-download.small{ background:var(--green) !important; }
+.download-btn.android-download.small:hover,
+.download-btn.android-download.small:focus{ background:var(--green-darker) !important; }
+
+/* アクセシビリティ */
+.download-btn.android-download:focus-visible{ outline:3px solid rgba(255,255,255,.9); outline-offset:2px; }
+
+/* ===== 矢印との重なり完全解消 ===== */
+.hero .download-buttons{ position:relative !important; z-index:10 !important; }
+.scroll-indicator{
+  position:static !important;          /* 絶対配置を無効化 */
+  display:flex !important;
+  justify-content:center !important;
+  align-items:center !important;
+  margin-top:36px !important;          /* ボタンから十分に離す */
+  color:#666; z-index:0 !important;
+}
+.scroll-indicator a{ display:inline-flex; width:44px; height:44px; align-items:center; justify-content:center; line-height:1; }
+.scroll-indicator i{ font-size:20px; opacity:.8; }
+
+/* ===== セクション ===== */
+.section-title{ font-size:clamp(22px,3.4vw,32px); text-align:center; margin:40px 0 20px; }
+.about .about-content{ display:grid; gap:16px; justify-items:center; text-align:center; }
+.features{ display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); margin-top:20px; }
+.feature-item{ background:#fff; border-radius:14px; padding:18px; box-shadow:0 4px 12px rgba(0,0,0,.05); }
+.feature-icon{ font-size:28px; color:var(--green); margin-bottom:8px; }
+
+/* How-To */
+.steps{ display:grid; gap:18px; grid-template-columns:1fr; }
+.step{ background:#fff; border-radius:14px; padding:18px; box-shadow:0 4px 12px rgba(0,0,0,.05); }
+.step-number{
+  width:36px; height:36px; border-radius:50%; background:var(--green); color:#fff;
+  display:inline-flex; align-items:center; justify-content:center; font-weight:700; margin-bottom:8px;
+}
+
+/* CTA */
+.cta{ background:#fff; padding:32px 0; margin-top:24px; }
+.cta h2{ text-align:center; margin:0 0 6px; }
+.cta p{ text-align:center; margin:0; color:#444; }
+
+/* Footer */
+.footer{ background:#0f172a; color:#fff; margin-top:40px; }
+.footer .footer-content{ padding:24px 0; display:grid; gap:12px; justify-items:center; }
+.footer a{ color:#d2e7c9; text-decoration:none; margin:0 6px; }
+.footer a:hover{ text-decoration:underline; }
+
+/* レスポンシブ */
+@media (min-width:720px){ .steps{ grid-template-columns:repeat(3,1fr);} }
+@media (max-width:560px){ .scroll-indicator{ display:none !important; } }  /* SPでは矢印を非表示にしたい場合 */
+@media (max-width:360px){ .download-btn .btn-text strong{ font-size:14px; } }
+.hero .download-buttons a.download-btn.android-download,
+.cta  .download-buttons a.download-btn.android-download,
+.howto .download-buttons a.download-btn.android-download{
+  background-color:#8AC75A !important;
+  background-image:none !important;
+  color:#fff !important;
+  border:1px solid rgba(0,0,0,.05) !important;
+}
+.hero .download-buttons a.download-btn.android-download:hover,
+.cta  .download-buttons a.download-btn.android-download:hover,
+.howto .download-buttons a.download-btn.android-download:hover,
+.hero .download-buttons a.download-btn.android-download:focus,
+.cta  .download-buttons a.download-btn.android-download:focus,
+.howto .download-buttons a.download-btn.android-download:focus{
+  background-color:#77B44C !important;
+}
+#dl-main,#dl-cta{ background-color:#8AC75A !important; background-image:none !important; color:#fff !important; }
+#dl-main:hover,#dl-main:focus,#dl-cta:hover,#dl-cta:focus{ background-color:#77B44C !important; }

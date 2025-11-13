@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap');
+
+#map {
+  display: none;
+  height: 100vh;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.container {
+  background-color: white;
+  border-radius: 10px;
+  text-align: center;
+  opacity: 0.92;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.location {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 5px;
+}
+
+.time {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.image-container img {
+  width: 80%;
+  border-radius: 5px;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 45px;
+  margin-top: 15px;
+}
+
+
+.gm-style-iw {
+  max-width: 500px;
+}

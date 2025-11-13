@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="./vote.css" rel="stylesheet" type="text/css">
+    <title>Document</title>
+</head>
+<body>
+    <script src="//cdn.jsdelivr.net/npm/matter-js@0.18.0/build/matter.min.js"></script>
+	<script src="//cdn.jsdelivr.net/npm/matter-wrap@0.2.0/build/matter-wrap.min.js"></script>
+    
+    <div id="background">
+        
+        <!-- 投票の選択肢のまとめ -->
+        <div id="choices">
+            <!-- JavaScriptで選択肢が追加されます。 -->
+        </div>
+
+        <!-- 投票タイトル -->
+        <div id="titleBar">
+            <p id="title"></p>
+            <img src="./titleBar.svg">
+        </div>
+
+        <!-- 背景のcanvas -->
+        <div id="canvasBack"></div>
+
+        <!-- 黒の半透明フィルター -->
+        <div id="filter"></div>
+
+        <!-- 案内文字 -->
+        <div id="guideLetter">
+            <p>投票玉をタップしながら<br>どちらかへスワイプしよう!</p>
+        </div>
+
+        <!-- ブーストボタン -->
+        <div id="boostButton">
+            <div id="boostTitle">
+                <img src="./boostButtonLogo.svg">    
+            </div>
+
+            <!-- 撮影フェーズ  -->
+            <div id="boostContentCamera">
+                <p class="explanation">この写真のようにゴミ箱の中身を撮影して投稿しよう！投票玉を2倍にグレードアップして相手と差をつけることができるぞ！</p>
+                <img src="./trashImage.jpg" id="trashImage">
+                <label for="inputTrashImage">
+                    <div id="cameraButton">
+                        <p>写真を撮る</p>
+                    </div>
+                </label>
+                <input type="file" capture="environment" accept="image/*" id="inputTrashImage" style="display: none;">
+            </div>
+
+            <!-- 状態報告フェーズ -->
+            <div id="boostContentStatus">
+                <form name="statusForm" id="statusForm">
+                <p class="explanation">ゴミ箱の写真を撮ってくれてありがとう！最後にゴミ箱の状態に近い選択肢を選択してね！</p>
+
+                <input type="radio" name="status" value="ok" id="ok">
+                <label for="ok">
+                    <div id="statusContentOk" class="statusContent">
+                        <div class="left">
+                            <img src="./trashLogo1.svg">
+                        </div>
+                        <div class="right">
+                            <p class="statusTitle">異常なし</p>
+                            <p class="statusDetail">ゴミの量が70%未満<br>ゴミ箱が機能している状態</p>
+                        </div>
+                    </div>
+                </label>
+
+                <input type="radio" name="status" value="full" id="full">
+                <label for="full">
+                    <div id="statusContentFull" class="statusContent">
+                        <div class="left">
+                            <img src="./trashLogo2.svg">
+                        </div>
+                        <div class="right">
+                            <p class="statusTitle">満杯</p>
+                            <p class="statusDetail">ゴミの量が70%以上<br>捨てることが困難な状態</p>
+                        </div>
+                    </div>
+                </label>
+
+                <input type="radio" name="status" value="broken" id="broken">
+                <label for="broken">
+                    <div id="statusContentBroken" class="statusContent">
+                        <div class="left">
+                            <img src="./trashLogo3.svg">
+                        </div>
+                        <div class="right">
+                            <p class="statusTitle">破損</p>
+                            <p class="statusDetail">ゴミ箱が破損や転倒で<br>ゴミが捨てられない状態</p>
+                        </div>
+                    </div>
+                </label>
+                </form>
+            </div>
+
+            <div id="detailButton">
+                <p>詳細を見る</p>
+            </div>
+        </div>
+
+        <!-- アイテムを投げるためのcanvas -->
+        <div id="canvasFront"></div>
+
+        <!-- スタートボタン -->
+        <div id="startButton">
+            <p>TAP!</p>
+        </div>
+
+        <!-- 最後に出てくる感謝の言葉 -->
+        <div id="lastWord">
+            <p>投票感謝</p>
+        </div>
+
+    </div>
+
+    <img src="./voteBall1.svg" id="voteBall" style="display: none;">
+
+    <script src="./vote.js"></script>
+</body>
+</html>

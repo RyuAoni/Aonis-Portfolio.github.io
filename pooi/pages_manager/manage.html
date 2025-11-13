@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ゴミ箱管理</title>
+  <link rel="stylesheet" href="manage.css">
+  <link rel="stylesheet" href="mapmode.css">
+  <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>    
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.2/dist/FileSaver.min.js"></script>
+</head>
+<body>
+  
+  <!-- マップモードに切り替えるトグルボタン -->
+  <div class="toggle-button-container">
+    <div class="toggle-button" id="toggle-button-list"><p>リストモード</div></a>
+    <div class="toggle-button" id="toggle-button-map"><p>マップモード</div></a>
+  </div>
+
+  <!-- 上部の空白 -->
+  <div class="void-above"></div>
+
+  <!-- リストモードのゴミ箱情報 -->
+  <div class="trash-list" id="trashList"></div>
+
+  <!-- マップモードのゴミ箱情報 -->
+  <!-- <img src="../imgs/tras.jpg" id="img" style="display: none;"> -->
+  <div id="map">
+    <!-- ここに地図情報 -->
+  </div>
+
+  <!-- 下部の空白 -->
+  <div class="void-below"></div>
+  
+  <!-- 「新しくゴミ箱を追加する」ボタン -->
+  <div class="outside">
+    <div class="add-trash-button" onclick="openModal(1, 3)">
+        <img src="../imgs/add.svg" class="icon">
+        <p>新しくゴミ箱を追加する</p>
+    </div>
+  </div>
+
+  <!--HISTORYボタンの制御-->
+  <div id="HisModal" class="modal">
+    <div class="modal-content">
+      <div class="grid-container" id="gridContainer">
+        <!-- 複数のgrid-itemがjavascriptで挿入 -->
+      </div>
+      <button class="back-download-btn" onclick="backPage(this);">もどる</button>
+    </div>
+  </div>
+
+  <!--QRボタンの制御-->
+  <div id="QRModal" class="modal">
+    <div class="modal-content">
+      <div id="qrcode" class="QRcode-ap"></div>
+      <button class="back-download-btn" id="downloadBtn">ダウンロード</button>
+      <button class="back-download-btn" onclick="backPage(this);">もどる</button>
+    </div>
+  </div>
+
+  <!--FULLボタンの制御-->
+  <div id="StatusModal" class="modal">
+    <div class="modal-content">
+      <p class="pass-text">管理者パスワード</p>
+      <div class="input-field" >
+        <input type="password">
+      </div>
+      <button class="submit-solve-btn" disabled>解決しました</button>
+      <button class="back-download-btn" onclick="backPage(this);">もどる</button>
+    </div>
+  </div>
+
+  <!--新しくゴミ箱を追加するボタンの制御-->
+  <div id="myModal" class="modal">
+    <div class="modal-content">
+        <span>ゴミ箱の名前</span>
+        <div class="input-field-trash">
+            <input type="text">
+        </div>
+        <span>ゴミ箱の画像</span>
+        <div class="file-upload">
+            <span id="file-name"></span>
+            <label for="file-upload">
+              ファイルを選択
+            </label>
+            <input type="file" id="file-upload">
+        </div>
+        <span>位置情報</span>
+        <div class="location-info">
+            <span id="location-name"></span>
+            <div class="location-btn"><span>位置情報を選択</span></div>
+        </div>
+        <button class="submit-btn" disabled>追加する</button>
+        <button class="back-download-btn" onclick="backPage(this);">もどる</button>
+    </div>
+  </div>
+
+  <!-- Google Maps用のモーダル -->
+  <div id="mapModal" class="modal" tabindex="-1" role="dialog" aria-labelledby="label2">
+    <div class="modal-content">
+      <input id="pac-input" type="text" placeholder="Search Box">
+      <div id="mapModalMap"></div>
+      <button class="submit-location-btn" id="submitLocationBtn">位置情報を確定する</button>
+    </div>
+  </div>
+
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCb_zxonRgXneL23LUp2kM6RZhUeaZIjwY&libraries=places&callback=initMap" async defer></script>
+  <script src="manage.js"></script>
+  <script src="mapmode.js"></script>
+  
+</body>
+</html>

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ブラックジャック</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body {
+            background: #1d693a;
+            color: #fff;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            text-align: center;
+            padding: 0;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .screen-container {
+            display: flex;
+            align-items: flex-start; /* 上揃え */
+            justify-content: center;
+            width: 100%;
+            min-height: 100vh;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            box-sizing: border-box; /* paddingを含むサイズ計算 */
+        }
+        #lobby-area {
+            display: block; /* 初期表示 */
+            background-color: #1f2937;
+            border: 4px solid #4f46e5;
+            width: 90%;
+            max-width: 60rem; /* max-w-4xl 相当 */
+            padding: 2rem; /* p-8 相当 */
+            border-radius: 0.5rem; /* rounded-lg 相当 */
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+        #lobby-area h1 { color: #818cf8; font-size: 2.25rem; font-weight: bold; } /* text-4xl font-bold text-indigo-400 */
+        #lobby-area h2 { color: #a5b4fc; font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.5rem; } /* text-xl font-semibold mb-4 border-b border-gray-600 pb-2 */
+
+        #game-board-area {
+            display: none; /* 初期非表示 */
+            background-color: rgb(21 128 61);
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgb(0, 0, 0, 0.25);
+            padding: 1.5rem;
+            border: 4px solid #ffcc00;
+            width: 95%;
+            min-height: 80vh;
+            max-width: 1200px;
+            /* display: flex; はJSで設定 */
+            flex-direction: column;
+            position: relative;
+        }
+
+        h1#game-title { /* ゲーム盤面 H1 */
+             font-size: 2rem; color: #ffcc00; text-shadow: 2px 2px 4px #000; margin-bottom: 0.5rem; font-weight: bold; letter-spacing: 2px;
+        }
+        .section-title { font-size: 1.25rem; margin-top: 0.5rem; margin-bottom: 0.25rem; color: #00ffff; font-weight: bold; }
+        .hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; min-height: 100px; align-items: center; margin-bottom: 0.5rem; }
+        .hand img { width: 70px; height: auto; border-radius: 6px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); animation: cardDeal 0.3s ease-out; }
+        #players-area { display: flex; justify-content: space-around; flex-grow: 1; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+        .player-box { background: rgba(0,0,0,0.3); border: 2px solid rgba(255,204,0,0.3); border-radius: 12px; padding: 0.75rem; min-width: 200px; flex: 1; max-width: 23%; transition: all 0.3s ease; }
+        .player-box.is-turn { border-color: #ffcc00; box-shadow: 0 0 15px #ffcc00; }
+        .player-box h3 { font-size: 1rem; color: #ffcc00; margin-bottom: 0.5rem; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-box .hand { min-height: 100px; margin-bottom: 0.25rem;}
+        .player-box .score, .player-box .points, .player-box .bet, .player-box .status { font-size: 0.875rem; margin: 2px 0; color: #eee; }
+        .player-box .status-value { font-weight: bold; }
+        .status-betting { color: #facc15; } .status-playing { color: #34d399; } .status-stand { color: #60a5fa; } .status-bust { color: #f87171; } .status-blackjack { color: #f59e0b; }
+        #controls { width: 100%; display: flex; justify-content: center; align-items: center; padding: 1rem 1rem 0; margin-top: 1rem; box-sizing: border-box; flex-wrap: wrap; }
+        #betting-controls { display: none; align-items: center; }
+        #bet-amount { padding: 8px 12px; font-size: 1rem; border-radius: 6px; border: 2px solid #ffcc00; background: #1e4620; color: #ffcc00; width: 80px; text-align: center; margin: 0 10px; font-weight: bold; }
+        #bet-amount[type=number] { -moz-appearance: textfield; appearance: textfield; }
+        button { background: linear-gradient(145deg, #2c5f2d, #1e4620); border: 2px solid #ffcc00; color: #ffcc00; padding: 10px 20px; margin: 5px; font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.3); letter-spacing: 1px; }
+        button:hover:not(:disabled) { background: linear-gradient(145deg, #3a7a3c, #2c5f2d); transform: translateY(-2px); box-shadow: 0 6px 12px rgba(255,204,0,0.3); border-color: #ffd700; color: #ffd700; }
+        button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+        button:disabled { background: linear-gradient(145deg, #555, #444); border-color: #666; color: #888; cursor: not-allowed; opacity: 0.6; }
+        #message { font-size: 1.1rem; color: #ffcc00; font-weight: bold; background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 8px; min-height: 30px; display: inline-block; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center; }
+        .modal-content { background-color: #1e4620; border: 4px solid #ffcc00; color: #fff; padding: 2rem; border-radius: 1rem; text-align: center; max-width: 90%; width: 500px; }
+        .modal-content h2 { color: #ffcc00; font-size: 1.5rem; margin-bottom: 1rem;}
+        .modal-results p { margin: 5px 0; font-size: 1rem; }
+        .result-win { color: #34d399; } .result-lose { color: #f87171; } .result-push { color: #9ca3af; } .result-blackjack { color: #f59e0b; font-weight: bold; }
+        @keyframes cardDeal { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 768px) { #game-board-area { padding: 1rem; } h1#game-title { font-size: 1.5rem; } .section-title { font-size: 1rem; } .hand img { width: 55px; } .player-box { min-width: 150px; max-width: 45%; } #controls { flex-direction: column; } button { padding: 8px 16px; font-size: 0.8rem; } #bet-amount { width: 60px; } #message { font-size: 1rem; } }
+    </style>
+</head>
+<body>
+<div class="screen-container">
+
+    <div id="lobby-area">
+         <div class="text-center">
+            <h1 >ブラックジャック</h1>
+            <p class="text-gray-400">ルームID: <span id="room-id-display" class="font-mono bg-gray-700 p-1 rounded"></span></p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div class="md:col-span-1 bg-gray-900 p-4 rounded-lg"><h2 >参加者リスト</h2><ul id="player-list" class="space-y-2"></ul></div>
+            <div id="gm-panel" class="md:col-span-2 bg-gray-900 p-4 rounded-lg hidden">
+                <h2 >ゲーム設定 (GM専用)</h2>
+                <div class="space-y-4">
+                    <p class="text-gray-400">このゲームは8ラウンド固定です。</p>
+                </div>
+                <button id="start-game-btn" class="mt-6 w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700">ゲーム開始</button>
+            </div>
+            <div id="player-wait-message" class="md:col-span-2 flex items-center justify-center bg-gray-900 p-4 rounded-lg"><p class="text-gray-400 text-lg">参加者を待っています...</p></div>
+        </div>
+    </div>
+
+
+    <div id="game-board-area">
+        <h1 id="game-title">ブラックジャック (Round <span id="round-number">1</span>/8)</h1>
+        <p id="message"></p>
+
+        <div id="dealer-area">
+            <div class="section-title">【ディーラー / DEALER】</div>
+            <div id="dealer-hand" class="hand"></div>
+            <p id="dealer-score" class="font-bold text-lg"></p>
+        </div>
+
+        <div id="players-area">
+            </div>
+
+        <div id="controls">
+             <div id="betting-controls">
+                <span>ベット額: </span>
+                <input type="number" id="bet-amount" value="10" min="1" step="1">
+                <button id="place-bet-btn">ベットする / PLACE BET</button>
+            </div>
+            <div id="action-controls">
+                <button id="hit-btn" disabled>ヒット / HIT</button>
+                <button id="stand-btn" disabled>スタンド / STAND</button>
+            </div>
+             <button id="next-round-btn" class="hidden">次のラウンド / NEXT ROUND</button>
+        </div>
+    </div>
+
+     <div id="result-modal" class="fixed inset-0 z-50 items-center justify-center modal-backdrop">
+        <div class="modal-content">
+            <h2 id="result-title">ラウンド結果 / ROUND RESULT</h2>
+            <div id="dealer-result-info" class="mb-4">
+                 <p>ディーラーの手札:</p>
+                 <div id="result-dealer-hand" class="hand"></div>
+                 <p id="result-dealer-score" class="font-bold"></p>
+            </div>
+            <div id="player-results" class="modal-results space-y-2"></div>
+            <button id="next-round-btn" class="hidden mt-6">次のラウンド / NEXT ROUND</button>
+            <button id="close-result-btn" class="mt-6">閉じる / CLOSE</button>
+        </div>
+    </div>
+
+</div>
+
+    <script>
+        // --- DOM Elements ---
+        const lobbyArea = document.getElementById('lobby-area');
+        const gameBoardArea = document.getElementById('game-board-area');
+        const roomIdDisplay = document.getElementById('room-id-display');
+        const playerList = document.getElementById('player-list');
+        const gmPanel = document.getElementById('gm-panel');
+        const playerWaitMessage = document.getElementById('player-wait-message');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const roundNumberEl = document.getElementById('round-number');
+        const messageEl = document.getElementById('message');
+        const dealerAreaEl = document.getElementById('dealer-area');
+        const dealerHandEl = document.getElementById('dealer-hand');
+        const dealerScoreEl = document.getElementById('dealer-score');
+        const playersAreaEl = document.getElementById('players-area');
+        const controlsEl = document.getElementById('controls');
+        const bettingControlsEl = document.getElementById('betting-controls');
+        const betAmountInput = document.getElementById('bet-amount');
+        const placeBetBtn = document.getElementById('place-bet-btn')
+        const actionControlsEl = document.getElementById('action-controls');
+        const hitBtn = document.getElementById('hit-btn');
+        const standBtn = document.getElementById('stand-btn');
+        const nextRoundBtn = document.getElementById('next-round-btn');
+        const resultModal = document.getElementById('result-modal');
+        const resultTitle = document.getElementById('result-title');
+        const dealerResultInfo = document.getElementById('dealer-result-info');
+        const resultDealerHand = document.getElementById('result-dealer-hand');
+        const resultDealerScore = document.getElementById('result-dealer-score');
+        const playerResultsEl = document.getElementById('player-results');
+        const closeResultBtn = document.getElementById('close-result-btn');
+
+        // --- State ---
+        let currentUser = null;
+        let myRole = 'spectator';
+        let myPlayerId = null;
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('roomId');
+        if (roomIdDisplay) roomIdDisplay.textContent = roomId;
+        const socket = io();
+
+        // --- Helper: カード画像パス ---
+        function getCardImage(card, isFaceDown = false) {
+             if (isFaceDown || !card || card.suit === 'back') {
+                return "/images/cards/card-back.png";
+            }
+            return `/images/cards/${card.suit}${card.value}.png`;
+        }
+
+        // --- Helper: カード要素作成 ---
+        function renderCard(card, isFaceDown = false) {
+            const img = document.createElement("img");
+            img.src = getCardImage(card, isFaceDown);
+            img.alt = isFaceDown ? "Hidden Card" : `${card.value} of ${card.suit}`;
+            return img;
+        }
+
+        // --- Helper: ステータス表示 ---
+        function getStatusTextAndClass(status) {
+             switch(status) {
+                 case 'betting': return { text: 'ベット待ち', class: 'status-betting'};
+                 case 'betPlaced': return { text: 'ベット完了', class: 'status-betting'};
+                 case 'playing': return { text: 'プレイ中', class: 'status-playing'};
+                 case 'stand': return { text: 'スタンド', class: 'status-stand'};
+                 case 'bust': return { text: 'バースト', class: 'status-bust'};
+                 case 'blackjack': return { text: 'BJ!', class: 'status-blackjack'};
+                 default: return { text: status, class: ''};
+             }
+        }
+
+        // --- Socket.IO Event Listener ---
+        const handleBoardUpdate = ({ boardState, myHand, myRole: roleFromServer }) => {
+            // 初回呼び出しかどうかをチェック
+            if (gameBoardArea.style.display === 'none') {
+                console.log("Switching to Game Board"); // デバッグ用ログ
+                lobbyArea.style.display = 'none';    // ロビーを非表示に
+                gameBoardArea.style.display = 'flex'; // ゲーム盤面を表示
+            }
+
+            myRole = roleFromServer;
+            myPlayerId = currentUser ? currentUser.id : null;
+
+            roundNumberEl.textContent = boardState.round;
+            messageEl.textContent = '';
+
+            // --- GM/観戦者ビュー ---
+            if (myRole !== 'player') {
+                dealerAreaEl.style.display = 'block';
+                playersAreaEl.style.display = 'flex';
+
+                // ディーラー表示
+                dealerHandEl.innerHTML = '';
+                boardState.dealerHand.forEach((card) => {
+                     dealerHandEl.appendChild(renderCard(card, card.suit === 'back'));
+                });
+                dealerScoreEl.textContent = boardState.dealerScore > 0 ? `ディーラー得点: ${boardState.dealerScore}` : '';
+
+                // プレイヤー表示 (表向き)
+                playersAreaEl.innerHTML = '';
+                boardState.players.forEach(pData => {
+                    const playerBox = document.createElement('div');
+                    playerBox.className = 'player-box';
+                    playerBox.id = `player-box-${pData.id}`;
+                    if (pData.isTurn) playerBox.classList.add('is-turn');
+                    const isMe = pData.id === myPlayerId;
+                    const statusInfo = getStatusTextAndClass(pData.status);
+
+                    playerBox.innerHTML = `
+                        <h3>${pData.nickname}${isMe ? ' (YOU)' : ''}</h3>
+                        <div class="hand player-hand" id="player-hand-${pData.id}"></div>
+                        <p class="score">Score: ${pData.score > 0 ? pData.score : ''}</p>
+                        <p class="points">Points: ${pData.points}</p>
+                        <p class="bet">Bet: ${pData.currentBet > 0 ? pData.currentBet : '-'}</p>
+                        <p class="status">Status: <span class="status-value ${statusInfo.class}">${statusInfo.text}</span></p>
+                    `;
+                    playersAreaEl.appendChild(playerBox);
+
+                    const handEl = playerBox.querySelector(`#player-hand-${pData.id}`);
+                    if (pData.hand && pData.hand.length > 0) {
+                        pData.hand.forEach(card => {
+                            handEl.appendChild(renderCard(card, false)); // 表向き
+                        });
+                    }
+                });
+
+            // --- プレイヤービュー ---
+            } else {
+                dealerAreaEl.style.display = 'none'; // ディーラー非表示
+                playersAreaEl.style.display = 'flex';
+
+                playersAreaEl.innerHTML = ''; // クリア
+                const myPlayerData = boardState.players.find(p => p.id === myPlayerId);
+
+                if (myPlayerData) {
+                    const playerBox = document.createElement('div');
+                    playerBox.className = 'player-box w-full max-w-md mx-auto';
+                    playerBox.id = `player-box-${myPlayerData.id}`;
+                    if (myPlayerData.isTurn) playerBox.classList.add('is-turn');
+                    const statusInfo = getStatusTextAndClass(myPlayerData.status);
+
+                    playerBox.innerHTML = `
+                        <h3>${myPlayerData.nickname} (YOU)</h3>
+                        <div class="hand player-hand" id="player-hand-${myPlayerData.id}"></div>
+                        <p class="score">Score: ${myPlayerData.score > 0 ? myPlayerData.score : ''}</p>
+                        <p class="points">Points: ${myPlayerData.points}</p>
+                        <p class="bet">Bet: ${myPlayerData.currentBet > 0 ? myPlayerData.currentBet : '-'}</p>
+                        <p class="status">Status: <span class="status-value ${statusInfo.class}">${statusInfo.text}</span></p>
+                    `;
+                    playersAreaEl.appendChild(playerBox);
+
+                    const handEl = playerBox.querySelector(`#player-hand-${myPlayerData.id}`);
+                    myHand.forEach(card => handEl.appendChild(renderCard(card))); // 自分の手札を表示
+                }
+            }
+
+
+            // コントロール表示切り替え
+            const myPlayerData = boardState.players.find(p => p.id === myPlayerId); // ★ myPlayerDataForControl を myPlayerData に統一
+            const canBet = myRole === 'player' && boardState.phase === 'betting' && myPlayerData?.status === 'betting';
+            const canAct = myRole === 'player' && boardState.phase === 'playerTurn' && myPlayerData?.isTurn && myPlayerData?.status === 'playing';
+            const canStartNextRound = myRole === 'gm' && boardState.phase === 'roundEnd';
+
+            bettingControlsEl.style.display = canBet ? 'flex' : 'none';
+            actionControlsEl.style.display = canAct ? 'block' : 'none';
+            nextRoundBtn.style.display = canStartNextRound ? 'inline-block' : 'none';
+
+            hitBtn.disabled = !canAct;
+            standBtn.disabled = !canAct;
+            placeBetBtn.disabled = !canBet;
+
+            if (canBet && myPlayerData) {
+                 // betAmountInput.max = myPlayerData.points; // max属性の設定を削除
+                 // 現在の入力値がマイナスポイントでも許容されるようにする
+                 const currentBetValue = parseInt(betAmountInput.value);
+                 const maxBetAllowed = myPlayerData.points + 100; // 借金限度を考慮した最大ベット額
+
+                 // 最小ベットは1
+                 if (currentBetValue <= 0) {
+                     betAmountInput.value = 1;
+                 }
+                 // 最大ベット額を超えていたら修正（任意）
+                 // if (currentBetValue > maxBetAllowed && maxBetAllowed >= 1) {
+                 //     betAmountInput.value = maxBetAllowed;
+                 // } else if (maxBetAllowed < 1) { // 借金限度額でベット不可の場合
+                 //     betAmountInput.value = 0; // or 1
+                 //     placeBetBtn.disabled = true; // ベット不可にする
+                 // }
+
+                 // ベット額入力欄のminは1のままにする
+                 betAmountInput.min = 1;
+            }
+
+            // メッセージ表示
+            if (boardState.phase === 'betting') { messageEl.textContent = `ラウンド ${boardState.round}: ベットしてください`; }
+            else if (boardState.phase === 'playerTurn') { const currentPlayer = boardState.players.find(p => p.isTurn); if (currentPlayer) { messageEl.textContent = `${currentPlayer.nickname} のターン`; } }
+            else if (boardState.phase === 'dealerTurn') { messageEl.textContent = "ディーラーのターン"; }
+            else if (boardState.phase === 'scoring') { messageEl.textContent = "結果判定中..."; }
+            else if (boardState.phase === 'roundEnd') { messageEl.textContent = "ラウンド終了"; }
+        };
+
+        // --- Document Ready ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lobbyArea.style.display = 'block';
+            gameBoardArea.style.display = 'none';
+            resultModal.style.display = 'none';
+
+            if (!socket) return alert("接続エラー");
+            const token = localStorage.getItem('token');
+            if (!token || !roomId) return window.location.href = '/home.html';
+            try { currentUser = JSON.parse(atob(token.split('.')[1])); }
+            catch (e) { localStorage.removeItem('token'); return window.location.href = '/login.html'; }
+            socket.emit('joinLobby', { token, roomId });
+        });
+
+        // --- Socket.IO Event Listeners ---
+        if (socket) {
+            socket.on('gameStarted', handleBoardUpdate);
+            socket.on('updateBoard', handleBoardUpdate);
+            socket.on('updateLobby', ({ participants }) => {
+                 if (!playerList) return;
+                 playerList.innerHTML = '';
+                 let isGmInLobby = false;
+                 participants.forEach(p => {
+                     const li = document.createElement('li');
+                     li.className = 'flex items-center justify-between p-2 bg-gray-700 rounded';
+                     const nicknameSpan = document.createElement('span');
+                     nicknameSpan.textContent = p.nickname || `Player ${p.id}`;
+                     if (currentUser && p.id === currentUser.id) nicknameSpan.className = "font-bold text-indigo-400";
+                     const roleSpan = document.createElement('span');
+                     if (p.role === 'gm') {
+                         roleSpan.textContent = 'GM';
+                         roleSpan.className = 'text-xs bg-yellow-500 text-gray-900 font-bold px-2 py-1 rounded-full';
+                         if (currentUser && p.id === currentUser.id) isGmInLobby = true;
+                     } else {
+                         roleSpan.textContent = p.role === 'player' ? 'Player' : 'Spectator';
+                         roleSpan.className = `text-xs ${p.role === 'player' ? 'bg-blue-500' : 'bg-gray-500'} px-2 py-1 rounded-full`;
+                     }
+                     li.appendChild(nicknameSpan);
+                     li.appendChild(roleSpan);
+                     playerList.appendChild(li);
+                 });
+                 if (gmPanel && playerWaitMessage) {
+                     gmPanel.style.display = isGmInLobby ? 'block' : 'none';
+                     playerWaitMessage.style.display = isGmInLobby ? 'none' : 'flex';
+                 }
+            });
+
+            socket.on('promptBet', ({ message }) => { messageEl.textContent = message; });
+
+            socket.on('roundResult', ({ results, dealerHand, dealerScore, dealerBusted, dealerHasBJ, isFinalRound, gmId }) => {
+                 resultTitle.textContent = `ラウンド ${roundNumberEl.textContent} 結果`;
+                 resultDealerHand.innerHTML = '';
+                 if (dealerHand) { dealerHand.forEach(card => resultDealerHand.appendChild(renderCard(card, false))); }
+                 let dealerStatusText = `得点: ${dealerScore}`;
+                 if (dealerBusted) dealerStatusText += " (バースト)";
+                 if (dealerHasBJ) dealerStatusText += " (ブラックジャック)";
+                 resultDealerScore.textContent = dealerStatusText;
+                 playerResultsEl.innerHTML = '';
+                 results.forEach(res => {
+                     let resultClass = ''; let resultText = '';
+                     switch(res.result) {
+                         case 'win': resultClass = 'result-win'; resultText = '勝ち'; break;
+                         case 'lose': resultClass = 'result-lose'; resultText = '負け'; break;
+                         case 'push': resultClass = 'result-push'; resultText = '引き分け'; break;
+                         case 'blackjack': resultClass = 'result-blackjack'; resultText = 'ブラックジャック!'; break;
+                     }
+                     const profitText = res.profit > 0 ? ` (+${res.profit})` : res.profit < 0 ? ` (${res.profit})` : '';
+                     const scoreText = res.playerStatus === 'bust' ? '(バースト)' : res.playerStatus === 'blackjack' ? '' : `- Score: ${res.playerScore}`;
+                     playerResultsEl.innerHTML += `<p>${res.nickname}: <span class="${resultClass}">${resultText}${profitText}</span> ${scoreText}</p>`;
+                 });
+
+                 const isGM = myRole === 'gm';
+                 // ★ 修正: GMでも両方のボタンを表示するように変更
+                 nextRoundBtn.style.display = isGM ? 'inline-block' : 'none';
+                 closeResultBtn.style.display = 'inline-block'; // 常に表示
+
+                 nextRoundBtn.textContent = isFinalRound ? '最終結果へ / FINAL RESULT' : '次のラウンド / NEXT ROUND';
+
+                 resultModal.style.display = 'flex';
+            });
+
+            socket.on('gameOver', ({ results }) => {
+                localStorage.setItem('gameResults', JSON.stringify(results.map(r => ({...r, score: r.score }))));
+                window.location.href = window.location.origin + '/result.html';
+            });
+
+            socket.on('error', (message) => { console.error('Socket Error:', message); messageEl.textContent = `エラー: ${message}`; });
+        }
+
+        // --- UI Event Listeners ---
+         if (startGameBtn) startGameBtn.addEventListener('click', () => { if (!socket) return alert('接続エラー'); socket.emit('startGame', { roomId, settings: {}, gameType: 'blackjack' }); });
+         if (placeBetBtn) placeBetBtn.addEventListener('click', () => {
+             const amount = parseInt(betAmountInput.value, 10);
+             if (!isNaN(amount) && amount >= 1) {
+                 // Bet is sent, but button is NOT disabled here anymore.
+                 socket.emit('placeBet', { roomId, amount });
+                 // placeBetBtn.disabled = true; // ← この行を削除またはコメントアウト
+             } else {
+                 alert('有効なベット額（1以上）を入力してください。');
+                 // Ensure button is enabled if client-side validation fails
+                 // (Although removing the disable above makes this less critical)
+                 // placeBetBtn.disabled = false;
+             }
+         });
+         if (hitBtn) hitBtn.addEventListener('click', () => { socket.emit('hit', { roomId }); });
+         if (standBtn) standBtn.addEventListener('click', () => { socket.emit('stand', { roomId }); });
+         if (nextRoundBtn) nextRoundBtn.addEventListener('click', () => { socket.emit('nextRound', { roomId }); resultModal.style.display = 'none'; });
+         if (closeResultBtn) closeResultBtn.addEventListener('click', () => { resultModal.style.display = 'none'; });
+
+    </script>
+</body>
+</html>

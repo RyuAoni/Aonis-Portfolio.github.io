@@ -1,0 +1,469 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap');
+
+body{
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 700;
+  margin: 2svh auto 0 auto;
+  width: 90%;
+  height: 100svh;
+}
+
+.void-above {
+  width: 100%;
+  height: 50px;
+}
+
+.void-below {
+  width: 100%;
+  height: 100px;
+}
+
+.toggle-button-container {
+  display: flex;
+  position: fixed;
+  width: 88%;
+  justify-content: space-between;
+  background-color: #d3e8d2;
+  border: #ffffff 5px solid;
+  border-radius: 200px;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+.toggle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 49%;
+  height: 40px;
+  border-radius: 200px;
+  font-size: 15px;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: "Noto Sans JP", sans-serif;
+}
+
+.toggle-button p {
+  margin: 0;
+}
+
+#toggle-button-list {
+  background-color: #0F6A34;
+  color: #ffffff;
+  transition: all 0.5s;
+}
+
+#toggle-button-map {
+  background-color: transparent;
+  color: #0F6A34;
+  transition: all 0.5s;
+}
+
+/* リストの外枠 */
+
+.trash-list {
+  width: 100%;
+}
+
+/* リストの内枠 */
+.trash-item {
+  display: flex; /* 内部の要素を横並びにする */
+  justify-content: space-between;
+  background-color: #f2f2f2; /* 背景色を薄いグレーに設定 */
+  border-radius: 7px; /* 角を丸くする */
+  padding: 3%; /* 内側の余白を8pxに設定 */
+  margin-top: 20px;
+}
+
+/* リストの画像 */
+.trash-image {
+  width: 40%; 
+  border-radius: 7px; /* 画像の角を丸くする */
+  object-fit: cover;
+}
+
+.left-info {
+  width: 55%;
+  display: flex;
+  flex-flow: column;
+  justify-content: space-between;
+}
+
+/* リストのゴミの名前、稼働日、収集量 */
+.trash-info  {
+  font-size: 16px; /* 文字サイズを16pxに設定 */
+  font-family: "Noto Sans JP", sans-serif;
+  height: 50%;
+}
+
+/* ゴミの名前 */
+.trash-name {
+  margin: 0 auto 7px auto; /* 四方に3pxの余白を設定 */
+  color: #2d2d2d;
+  font-size: 17px;
+}
+
+/* 稼働日と収集量 */
+.trash-time {
+  margin: 0; /* 四方に3pxの余白を設定 */
+  font-size: 12px; /* 文字サイズを12pxに設定 */
+  color: #707070;
+}
+
+.trash-num {
+  margin: 0; /* 四方に3pxの余白を設定 */
+  font-size: 12px; /* 文字サイズを12pxに設定 */
+  color: #707070;
+}
+
+/* リストのHISTORY, QR, FULL(状態)の領域 */
+.trash-status {
+  display: flex; /* 内部の要素を横並びにする */
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* HISTORYアイコンの文字の色 */
+.history {
+  color: #0F6A34; /* ダークグリーンに設定 */
+}
+
+/* QRアイコンの文字の色 */
+.qr {
+  color: #0084FF; /* 青に設定 */
+}
+
+/* FULLアイコンの文字の色 */
+.full {
+  color: #FF1010; /* 赤に設定 */
+}
+
+/* BROKENアイコンの文字の色 */
+.broken {
+  color: #9C0AE1; /* パープルに設定 */
+}
+
+/* アイコンボタンのスタイル */
+.icon-button {
+  display: inline-flex; /* 内部の要素を横並びで中央揃え */
+  flex-direction: column; /* アイコンとテキストを縦に配置 */
+  align-items: center; /* 中央揃え */
+  font-size: 12px; /* 文字サイズを12pxに設定 */
+  text-decoration: none; /* テキストの下線を削除 */
+  text-align: center; /* テキストを中央揃えにする */
+}
+
+/* アイコンボタンの画像のスタイル */
+.icon-button img {
+  width: 33px; /* アイコンの幅を33pxに設定 */
+  height: auto; /* アスペクト比を維持 */
+  display: block; /* 画像をブロック要素として扱う */
+}
+
+/* 「新しくゴミ箱を追加するボタン」 */
+.outside {
+  width: 100%; /* 横幅を100%に設定 */
+  height: 80px;
+  background-color: #0F6A34; /* 背景色を濃い緑色に設定 */
+  position: fixed; /* 固定位置にする */
+  left: 0; /* 左端に固定 */
+  bottom: 0; /* 下端に固定 */
+  display: flex;
+  align-items: center; /* コンテンツを中央に揃える */
+  justify-content: center;
+}
+
+.add-trash-button {
+  text-align: center;
+  color: #0F6A34;
+  background-color: rgb(255, 255, 255);
+  border-radius: 5px;
+  width: 90%;
+  height: 50px;
+  font-size: 15px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-trash-button p {
+  margin: 0;
+  width: 50%;
+  white-space: nowrap; /* テキストを1行にする */
+}
+
+
+  /* モーダル全体の背景 */
+.modal {
+  align-items: center;
+  display: none;
+  position: fixed;
+  z-index: 2;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+  background-color: white;
+  width: 80%;
+  height: 75%;
+  padding: 0 5svw;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  margin: auto;
+  border-radius: 10px;
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  justify-content: center;
+  overflow: auto;
+  height: 80%;
+  width: 100%;
+}
+
+.grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.grid-item img {
+  width: 100%;
+  object-fit: contain;
+}
+
+.grid-item p {
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.QRcode-ap{
+  display: flex;
+  justify-content: center;
+  margin-bottom: 80px;
+}
+
+.container {
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+}
+
+.pass-text {
+  font-size: 24px;
+  margin: 0;
+}
+
+.input-field, .file-upload, .location-info {
+  margin: 5% 0 30% 0;
+  padding: 3%;
+  border: 2px solid #0F6A34;
+  border-radius: 3px;
+  width: 100%;
+  font-size: 1rem;
+  box-sizing: border-box; /* 追加 */
+}
+
+.input-field input, .input-field-trash input {
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  height: auto;
+  text-align: center;
+  width: 100%; /* 追加 */
+  box-sizing: border-box; /* 追加 */
+  font-weight: 500;
+}
+
+.input-field-trash {
+  padding: 3%;
+  border: 2px solid #0F6A34;
+  border-radius: 3px;
+  margin: 5% 0;
+  width: 100%;
+  font-size: 1rem;
+  box-sizing: border-box; /* 追加 */
+  font-weight: 500
+}
+
+.file-upload {
+  font-family: "Noto Sans JP", sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 2px solid #0F6A34;
+  border-radius: 3px;
+  padding: 0;
+  margin: 5% 0;
+  box-sizing: border-box; /* 追加 */
+}
+
+.file-upload span {
+  flex: 2;
+  margin-right: 10px;
+  font-size: 1rem;
+  line-height: 30px;
+  overflow: hidden;
+  text-align: center; /* 追加 */
+}
+
+.file-upload input[type="file"] {
+  display: none;
+}
+
+.file-upload label {
+  flex: 1.3;
+  background-color: #0F6A34;
+  color: white;
+  padding: 10px 15px;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  line-height: 30px;
+  width: 80%;
+  justify-content: center; /* 追加 */
+  line-height: 1;
+  font-weight: 500
+}
+
+.location-info {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  border: 2px solid #0F6A34;
+  padding: 0;
+  margin: 5% 0 20% 0;
+  font-size: 1rem;
+  width: 100%;
+  height: 60px;
+  box-sizing: border-box; /* 追加 */
+}
+
+#location-name {
+  margin-right: 15px;
+  overflow: auto;
+  height: 100%;
+  width: 55%;
+  text-align: center; /* 追加 */
+}
+
+.location-btn {
+  background-color: #0F6A34;
+  color: white;
+  font-size: 1rem;
+  height: 100%;
+  width: 45%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500
+}
+
+.submit-location-btn{
+  width: 100%;
+  height: 50px;
+  background-color: #0F6A34;
+  color: white;
+  font-size: 1.1rem;
+  line-height: 50px;
+  border-radius: 25px;
+  margin: 5% 0;
+  cursor: pointer;
+  border: none;
+  font-weight: 500;
+}
+
+.submit-solve-btn {
+  width: 100%; /* 修正 */
+  height: 50px;
+  background-color: grey;
+  color: white;
+  font-size: 1.1rem;
+  line-height: 50px;
+  border-radius: 25px;
+  border: none;
+  box-sizing: border-box; /* 追加 */
+  text-align:center;
+  padding: 1px 0;
+  font-weight: 500;
+}
+
+.submit-btn {
+  width: 100%; /* 修正 */
+  height: 50px;
+  background-color: grey;
+  color: white;
+  font-size: 1.1rem;
+  line-height: 50px;
+  border-radius: 25px;
+  border: none;
+  box-sizing: border-box; /* 追加 */
+  text-align:center;
+  padding: 1px 0;
+  font-weight: 500;
+}
+
+.back-download-btn {
+  width: 100%; /* 修正 */
+  height: 50px;
+  background-color: #0F6A34;
+  color: white;
+  font-size: 1.1rem;
+  line-height: 50px;
+  border-radius: 25px;
+  margin-top: 20px;
+  border: none;
+  box-sizing: border-box; /* 追加 */
+  text-align:center;
+  font-weight: 500;
+}
+
+  /* 閉じるボタン */
+.close-btn {
+  color: black;
+  background-color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+#mapModalMap {
+  height: 80%;
+  width: 100%;
+}
+
+#pac-input {
+  position: absolute;
+  display: block;
+  width: 75%;
+  height: 50px;
+  left: 0;
+  right: 0;
+  top: 6%;
+  margin: auto;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 0 5%;
+  text-overflow: ellipsis;
+  color: #000000;
+  background-color: #fff;
+  border: none;
+  border-radius: 300px;
+  z-index: 2;
+}

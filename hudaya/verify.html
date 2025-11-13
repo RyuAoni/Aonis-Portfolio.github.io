@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本人確認</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen font-sans">
+    <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg shadow-xl text-center">
+        <h2 id="status-title" class="text-3xl font-bold text-indigo-400">本人確認中...</h2>
+        <p id="status-message" class="text-gray-400">サーバーと通信しています。しばらくお待ちください。</p>
+        <a id="login-link" href="login.html" class="hidden w-full text-center py-3 px-4 rounded-md text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+            ログインページへ
+        </a>
+    </div>
+
+    <script>
+        const title = document.getElementById('status-title');
+        const message = document.getElementById('status-message');
+        const loginLink = document.getElementById('login-link');
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+
+            if (!token) {
+                title.textContent = 'エラー';
+                message.textContent = '確認用トークンが見つかりませんでした。';
+                return;
+            }
+
+            try {
+                const response = await fetch('/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    title.textContent = '認証完了！';
+                    message.textContent = data.message + ' ログインしてゲームをお楽しみください。';
+                    loginLink.classList.remove('hidden');
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                title.textContent = '認証失敗';
+                message.textContent = 'エラー: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>

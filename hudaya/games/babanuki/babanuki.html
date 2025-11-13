@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ババ抜き - 対戦中</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        /* (他のスタイルルールは変更なし) */
+        body { font-family: "Segoe UI", sans-serif; text-align: center; background: radial-gradient(circle at center, #1e2a38, #111821 80%); color: #fff; margin: 0; padding: 1rem; box-sizing: border-box; min-height: 100vh; overflow-x: hidden; }
+        .screen-container { display: flex; align-items: flex-start; justify-content: center; width: 100%; min-height: calc(100vh - 2rem); }
+        #lobby-area { display: block; background-color: #1f2937; border: 4px solid #4f46e5; width: 90%; max-width: 60rem; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
+        #lobby-area h1 { color: #818cf8; font-size: 2.25rem; font-weight: bold; }
+        #lobby-area h2 { color: #a5b4fc; font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.5rem; }
+        #game-board-area { display: none; width: 100%; max-width: 1000px; margin: 0 auto; }
+        h1#game-title { font-size: 2em; margin-bottom: 20px; color: #ffe600; text-shadow: 1px 1px 3px #000; }
+        #gameArea { display: flex; justify-content: space-around; flex-wrap: wrap; margin: 20px 0; gap: 20px; }
+        .hand, .discard { display: flex; flex-direction: column; justify-content: flex-start; align-items: center; position: relative; width: 90%; max-width: 400px; min-height: 160px; border: 2px solid rgba(255,255,255,0.2); border-radius: 14px; background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(0,0,0,0.25)); box-shadow: inset 0 0 10px rgba(255,255,255,0.05), 0 0 18px rgba(0,0,0,0.5); transition: transform 0.3s ease, box-shadow 0.3s ease; padding: 10px; box-sizing: border-box; }
+        .hand:hover, .discard:hover { transform: translateY(-6px); /* (省略) */ }
+        .hand-label { margin-bottom: 10px; background: linear-gradient(135deg, #0e5729, #1a7431); color: #fffbcc; padding: 4px 14px; font-weight: bold; font-size: 16px; border-radius: 6px; letter-spacing: 1px; box-shadow: 0 0 8px rgba(0,0,0,0.4); }
+        .hand-cards, .discard-cards { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; width: 100%; }
+        .card { width: 55px; height: 78px; transition: transform 0.2s ease, box-shadow 0.2s ease; perspective: 1000px; background-color: transparent; }
+        .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+        .card.flipped .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 6px; }
+        .card-back { transform: rotateY(180deg); }
+        .card-img { width: 100%; height: 100%; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); user-select: none; }
+        .card.clickable .card-inner { cursor: pointer; }
+        .card.clickable .card-inner:hover { transform: translateY(-8px) scale(1.05); box-shadow: 0 6px 12px rgba(0,0,0,0.6); }
+
+        /* ★ 追加: 選択中のカードを目立たせる */
+        .card.selected-card {
+            transform: translateY(-10px) scale(1.1);
+            box-shadow: 0 0 15px 3px #ffe600; /* 黄色い光 */
+        }
+        .card.selected-card .card-inner {
+             border: 2px solid #ffe600;
+             border-radius: 6px;
+        }
+
+        /* ★ 追加: GM/観戦者ビューでターン中のプレイヤーを目立たせる */
+        .hand.is-turn-gm {
+             border-color: #ffe600;
+             box-shadow: inset 0 0 20px rgba(255, 230, 0, 0.2), 0 0 25px rgba(255, 230, 0, 0.5);
+        }
+
+
+        .hand-empty { color: #aaa; font-style: italic; margin-top: 20px; }
+        .hand-empty.finished { color: #8bc34a; font-weight: bold; }
+        #status { width: 90%; max-width: 700px; height: 100px; margin: 20px auto; padding: 10px 15px; border-radius: 8px; background: rgba(0,0,0,0.4); box-shadow: inset 0 0 15px rgba(255,255,255,0.05); overflow-y: auto; text-align: left; font-size: 13px; line-height: 1.4; }
+        #status div { margin-bottom: 4px; }
+        #winnerMessage { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3em; font-weight: bold; color: #ffe600; text-shadow: 0 0 20px #ff0000, 0 0 35px #ff66cc; z-index: 1000; background: rgba(0,0,0,0.7); padding: 20px 40px; border-radius: 15px; display: none; }
+        #winnerMessage button { display: block; margin: 20px auto 0; padding: 10px 20px; font-size: 0.5em; background-color: #4f46e5; color: white; border: none; border-radius: 0.375rem; cursor: pointer; }
+        #winnerMessage button:hover { background-color: #4338ca; }
+
+        /* ★ 追加: カード選択ボタン */
+        #opponent-controls {
+            display: none; /* 自分のターン以外は非表示 */
+            width: 100%;
+            margin-top: 15px;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        #opponent-controls button {
+             background-color: #4f46e5; color: white; padding: 8px 16px;
+             border-radius: 6px; font-weight: bold; border: none; cursor: pointer;
+        }
+        #opponent-controls button:hover { background-color: #4338ca; }
+        #opponent-controls button:disabled { background-color: #555; cursor: not-allowed; }
+        #selection-text { font-size: 1.1em; font-weight: bold; color: #ffe600; }
+        @media (max-width: 600px) { body { padding: 0.5rem; } #game-board-area { padding: 10px; } .hand, .discard { padding: 5px; min-height: 140px; } .card { width: 42px; height: 60px; } .hand-label { font-size: 14px; padding: 3px 10px; } h1#game-title { font-size: 1.5em; margin-bottom: 10px; } #status { height: 80px; font-size: 12px; } #winnerMessage { font-size: 2em; padding: 15px 30px; } }
+    </style>
+</head>
+<body>
+<div class="screen-container">
+
+    <div id="lobby-area" class="w-full max-w-4xl p-8 space-y-6 bg-gray-800 rounded-lg shadow-2xl border border-gray-700"> </div>
+
+
+    <div id="game-board-area">
+        <h1 id="game-title">ババ抜き</h1>
+        <div id="gameArea">
+            <div id="all-players-view" class="w-full flex flex-wrap justify-center gap-4 mb-4" style="display: none;"></div>
+
+            <div id="player-view-opponent" class="hand">
+                <div class="hand-label" id="opponentLabel">相手の手札</div>
+                <div class="hand-cards" id="opponentHand"></div>
+                <div id="opponent-controls">
+                    <button id="select-left-btn">◀</button>
+                    <span id="selection-text">カード 1</span>
+                    <button id="select-right-btn">▶</button>
+                    <button id="draw-card-btn">このカードを引く</button>
+                </div>
+            </div>
+
+            <div class="discard" id="discardPileContainer"> <div class="hand-label">捨て札</div> <div class="hand-cards" id="discardPile"></div> </div>
+            <div id="player-view-me" class="hand"> <div class="hand-label" id="playerLabel">あなたの手札</div> <div class="hand-cards" id="playerHand"></div> </div>
+        </div>
+        <div id="status"></div>
+        <div id="winnerMessage" style="display: none;"> <span id="winner-text"></span> <button id="go-to-result-btn">結果画面へ</button> </div>
+    </div>
+
+</div>
+
+    <script>
+        // ★ 修正: すべてのJSコードを DOMContentLoaded イベントリスナーでラップ
+        document.addEventListener("DOMContentLoaded", () => {
+            
+            // --- DOM Elements ---
+            const lobbyArea = document.getElementById('lobby-area');
+            const gameBoardArea = document.getElementById('game-board-area');
+            const roomIdDisplay = document.getElementById('room-id-display');
+            const playerList = document.getElementById('player-list');
+            const gmPanel = document.getElementById('gm-panel');
+            const playerWaitMessage = document.getElementById('player-wait-message');
+            const startGameBtn = document.getElementById('start-game-btn');
+            const allPlayersViewEl = document.getElementById("all-players-view");
+            const playerViewOpponentEl = document.getElementById("player-view-opponent");
+            const playerViewMeEl = document.getElementById("player-view-me");
+            const playerHandEl = document.getElementById("playerHand");
+            const opponentHandEl = document.getElementById("opponentHand");
+            const discardPileEl = document.getElementById("discardPile");
+            const playerLabelEl = document.getElementById("playerLabel");
+            const opponentLabelEl = document.getElementById("opponentLabel");
+            const statusEl = document.getElementById("status");
+            const winnerMessageEl = document.getElementById("winnerMessage");
+            const winnerTextEl = document.getElementById("winner-text");
+            const goToResultBtn = document.getElementById("go-to-result-btn");
+            const opponentControlsEl = document.getElementById("opponent-controls");
+            const selectLeftBtn = document.getElementById("select-left-btn");
+            const selectRightBtn = document.getElementById("select-right-btn");
+            const selectionTextEl = document.getElementById("selection-text");
+            const drawCardBtn = document.getElementById("draw-card-btn");
+
+
+            // --- State ---
+            let currentUser = null; // ★ 修正: DOMContentLoaded の中で宣言
+            let myRole = 'spectator';
+            let myPlayerId = null;
+            let currentBoardState = null;
+            let playerHand = [];
+            let discardPile = [];
+            let isMyTurn = false;
+            let gameOver = false;
+            let clickableLocked = false;
+            let opponentsState = {};
+            let allPlayersData = [];
+            let roomPlayersOrder = [];
+            let finishedPlayers = [];
+            let selectedCardIndex = 0; // ★ 追加: 選択中のカードインデックス
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('roomId');
+            const socket = io();
+
+            // --- Helper: カード画像パス (変更なし) ---
+            function getCardImage(card) {
+                if (!card) return "/images/cards/card-back.png";
+                if (card.rank === "JOKER") return "/images/cards/joker.png";
+                const suit = card.suit?.toLowerCase();
+                let valueStr = String(card.rank);
+                if (valueStr === "J") valueStr = "J"; else if (valueStr === "Q") valueStr = "Q"; else if (valueStr === "K") valueStr = "K"; else if (valueStr === "A") valueStr = "A";
+                if (!suit || !valueStr) return "/images/cards/card-back.png";
+                return `/images/cards/${suit}${valueStr}.png`;
+            }
+
+            // --- Helper: カード要素作成 (変更なし) ---
+            function renderCardElement(card, isFaceDown = false, isClickable = false, onClick = null) {
+                const el = document.createElement("div"); el.className = "card"; if (isClickable) el.classList.add("clickable");
+                el.innerHTML = `<div class="card-inner" style="${isFaceDown ? '' : 'transform: rotateY(180deg);'}"><div class="card-front"><img src="${getCardImage(null, true)}" class="card-img"></div><div class="card-back"><img src="${getCardImage(card, false)}" class="card-img"></div></div>`;
+                if (isClickable && onClick) { el.addEventListener("click", onClick, { once: true }); }
+                return el;
+            }
+
+            // --- 描画 ---
+            function renderAll() {
+                if (!discardPileEl) return;
+                renderDiscard();
+                if (myRole !== 'player') {
+                     allPlayersViewEl.style.display = 'flex'; playerViewOpponentEl.style.display = 'none'; playerViewMeEl.style.display = 'none'; allPlayersViewEl.innerHTML = '';
+                     const sortedPlayers = [...allPlayersData].sort((a,b) => a.order - b.order);
+                     sortedPlayers.forEach(pData => {
+                          const playerDiv = document.createElement('div'); playerDiv.className = 'hand'; playerDiv.style.width = '45%'; if(pData.isTurn) playerDiv.style.borderColor = '#ffe600'; if(pData.isTurn) playerDiv.classList.add('is-turn-gm');
+                          const label = document.createElement('div'); label.className = 'hand-label'; const statusText = pData.status === 'finished' ? ` (上がり #${finishedPlayers.indexOf(pData.id) + 1})` : pData.status === 'disconnected' ? ' (切断)' : ''; label.textContent = `${pData.nickname} (P${pData.order + 1})${statusText}`; playerDiv.appendChild(label);
+                          const cardsDiv = document.createElement('div'); cardsDiv.className = 'hand-cards';
+                          if (pData.status === 'playing' || pData.status === 'disconnected') { for (let i = 0; i < pData.handCount; i++) { cardsDiv.appendChild(renderCardElement(null, true)); } }
+                          else if (pData.status === 'finished') { cardsDiv.innerHTML = '<div class="hand-empty finished">上がり</div>'; }
+                          else { cardsDiv.innerHTML = '<div class="hand-empty">---</div>'; }
+                          playerDiv.appendChild(cardsDiv); allPlayersViewEl.appendChild(playerDiv);
+                     });
+                } else {
+                     allPlayersViewEl.style.display = 'none'; playerViewOpponentEl.style.display = 'flex'; playerViewMeEl.style.display = 'flex';
+                     renderPlayerViewHands();
+                }
+            }
+            function renderPlayerViewHands() {
+                if (!playerHandEl || !opponentHandEl || !playerLabelEl || !opponentLabelEl) return;
+                // 自分 (変更なし)
+                playerHandEl.innerHTML = ''; const myStatus = finishedPlayers.includes(myPlayerId) ? " (上がり)" : ""; playerLabelEl.textContent = `あなた (P${getPlayerOrder(myPlayerId)}${myStatus})`;
+                if (playerHand.length === 0 && !finishedPlayers.includes(myPlayerId) && !gameOver) { playerHandEl.innerHTML = '<div class="hand-empty">カードなし</div>'; }
+                else { playerHand.forEach(card => playerHandEl.appendChild(renderCardElement(card, false))); }
+
+                // 引く相手
+                opponentHandEl.innerHTML = ''; // クリア
+                const opponentId = findOpponentToDrawFrom();
+                const opponentData = opponentsState[opponentId];
+                
+                if (opponentData) {
+                    const oppStatus = opponentData.status === 'finished' ? " (上がり)" : opponentData.status === 'disconnected' ? ' (切断)' : "";
+                    opponentLabelEl.textContent = `引く相手 (${opponentData.nickname} - P${getPlayerOrder(opponentId)}${oppStatus})`;
+                    
+                    const canDraw = isMyTurn && opponentData.status === 'playing' && !gameOver && !clickableLocked;
+                    
+                    if (opponentData.count === 0) {
+                        opponentHandEl.innerHTML = `<div class="hand-empty ${opponentData.status === 'finished' ? 'finished' : ''}">カードなし</div>`;
+                        opponentControlsEl.style.display = 'none'; // 引けないのでボタン隠す
+                    } else {
+                        // ★ 修正: 選択インデックスが範囲外ならリセット
+                        if (selectedCardIndex >= opponentData.count) {
+                            selectedCardIndex = 0;
+                        }
+
+                        for (let i = 0; i < opponentData.count; i++) {
+                            // クリックイベントは削除し、renderCardElement から isClickable と onClick を削除
+                            const cardEl = renderCardElement(null, true); 
+                            if (i === selectedCardIndex) {
+                                cardEl.classList.add('selected-card'); // 選択中ハイライト
+                            }
+                            opponentHandEl.appendChild(cardEl);
+                        }
+                        
+                        // ★ 修正: ボタンの表示/非表示制御
+                        if (canDraw) {
+                            opponentControlsEl.style.display = 'flex';
+                            selectionTextEl.textContent = `カード ${selectedCardIndex + 1} / ${opponentData.count}`;
+                            drawCardBtn.disabled = false;
+                            selectLeftBtn.disabled = false;
+                            selectRightBtn.disabled = false;
+                        } else {
+                            opponentControlsEl.style.display = 'none';
+                        }
+                    }
+                } else if (!gameOver) { 
+                    opponentLabelEl.textContent = "引く相手"; opponentHandEl.innerHTML = `<div class="hand-empty">対戦相手がいません</div>`;
+                    opponentControlsEl.style.display = 'none';
+                } else { 
+                    opponentLabelEl.textContent = "ゲーム終了"; opponentHandEl.innerHTML = '';
+                    opponentControlsEl.style.display = 'none';
+                }
+            }
+            function renderDiscard() {
+                if (!discardPileEl) return; discardPileEl.innerHTML = '';
+                discardPile.forEach(card => { discardPileEl.appendChild(renderCardElement(card, false)); });
+            }
+            function getPlayerOrder(pid) { const idx = roomPlayersOrder.indexOf(pid); return idx !== -1 ? idx + 1 : '?'; }
+            function findOpponentToDrawFrom() {
+                 if (!roomPlayersOrder.includes(myPlayerId) || roomPlayersOrder.length <= 1 || finishedPlayers.includes(myPlayerId)) { return null; }
+                 const myIdx = roomPlayersOrder.indexOf(myPlayerId); let nextIdx = (myIdx + 1) % roomPlayersOrder.length; let attempts = 0;
+                 while (attempts < roomPlayersOrder.length) {
+                     const targetId = roomPlayersOrder[nextIdx];
+                     if (targetId !== myPlayerId && !finishedPlayers.includes(targetId) && opponentsState[targetId] && opponentsState[targetId].status === 'playing') {
+                          if (opponentsState[targetId].count > 0) { return targetId; }
+                     }
+                     nextIdx = (nextIdx + 1) % roomPlayersOrder.length; attempts++;
+                 }
+                 return null;
+            }
+            function shortId(id) { return id ? id.slice(0, 5) : '?'; }
+            function log(msg) { if (!statusEl) return; const div = document.createElement("div"); div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`; statusEl.appendChild(div); statusEl.scrollTop = statusEl.scrollHeight; }
+
+            // ★ 修正: handleBoardUpdate を Socket リスナー設定の前に宣言
+            const handleBoardUpdate = ({ boardState, myHand, myRole: roleFromServer }) => {
+                if (lobbyArea.style.display !== 'none') { lobbyArea.style.display = 'none'; gameBoardArea.style.display = 'block'; }
+                myRole = roleFromServer;
+                playerHand = myHand ? myHand.slice() : [];
+                discardPile = boardState.discardPile ? boardState.discardPile.slice() : [];
+                finishedPlayers = boardState.finishedOrder ? boardState.finishedOrder.slice() : [];
+                isMyTurn = boardState.currentPlayerId === myPlayerId && !finishedPlayers.includes(myPlayerId);
+                clickableLocked = !isMyTurn;
+
+                allPlayersData = boardState.players ? boardState.players.slice() : [];
+                roomPlayersOrder = allPlayersData.map(p => p.id).sort((a,b)=>{
+                     const pA = allPlayersData.find(p=>p.id===a); const pB = allPlayersData.find(p=>p.id===b);
+                     return (pA?.order ?? 99) - (pB?.order ?? 99);
+                });
+
+                opponentsState = {};
+                allPlayersData.forEach(p => { if (p.id !== myPlayerId) { opponentsState[p.id] = { nickname: p.nickname, count: p.handCount, status: p.status, order: p.order }; } });
+
+                renderAll();
+
+                 if (isMyTurn && !gameOver) {
+                     log("🔹 あなたのターンです。相手のカードを引いてください。");
+                     const opponentId = findOpponentToDrawFrom();
+                     if (!opponentId && playerHand.length > 0) { log("引ける相手がいません。ターンがスキップされます。"); }
+                 }
+            };
+
+            // --- 初期化処理 (DOMContentLoaded) ---
+            lobbyArea.style.display = 'block';
+            gameBoardArea.style.display = 'none';
+            winnerMessageEl.style.display = 'none';
+            if (roomIdDisplay && roomId) roomIdDisplay.textContent = roomId;
+            else if (roomIdDisplay) roomIdDisplay.textContent = '取得エラー';
+
+            if (!socket) return alert("接続エラー");
+            const token = localStorage.getItem('token');
+            if (!token || !roomId) return window.location.href = '/home.html';
+
+            try {
+                currentUser = JSON.parse(atob(token.split('.')[1])); // ★ currentUser に正しく代入
+                myRole = currentUser.role === 'owner' ? 'gm' : 'player';
+                myPlayerId = currentUser.id;
+                if (gmPanel && playerWaitMessage) {
+                    if (myRole === 'gm') { gmPanel.style.display = 'block'; playerWaitMessage.style.display = 'none'; }
+                    else { gmPanel.style.display = 'none'; playerWaitMessage.style.display = 'flex'; }
+                }
+            } catch (e) { localStorage.removeItem('token'); return window.location.href = '/login.html'; }
+
+            // --- Socket.IO Event Listeners ---
+            if (socket) {
+                 socket.on("connect", () => { log(`🔗 サーバー接続完了`); });
+                 
+                 // ★ 修正: リスナーを先に設定
+                 socket.on('gameStarted', handleBoardUpdate);
+                 socket.on('updateBoard', handleBoardUpdate);
+
+                 socket.on('updateLobby', ({ participants }) => {
+                     if (!playerList || !gmPanel || !playerWaitMessage) { console.error("Lobby elements not found!"); return; }
+                     playerList.innerHTML = ''; let isGmInLobby = false;
+                     participants.forEach(p => {
+                         const li = document.createElement('li'); li.className = 'flex items-center justify-between p-2 bg-gray-700 rounded';
+                         const nicknameSpan = document.createElement('span'); nicknameSpan.textContent = p.nickname || `Player ${p.id}`;
+                         
+                         // ★ 修正: currentUser が null でないことを確認
+                         if (currentUser && p.id === currentUser.id) {
+                              nicknameSpan.className = "font-bold text-indigo-400";
+                              myRole = p.role;
+                              if (p.role === 'gm') isGmInLobby = true;
+                         }
+                         const roleSpan = document.createElement('span'); let roleText = 'Spectator'; let roleClass = 'bg-gray-500'; if (p.role === 'gm') { roleText = 'GM'; roleClass = 'bg-yellow-500 text-gray-900 font-bold'; } else if (p.role === 'player') { roleText = 'Player'; roleClass = 'bg-blue-500'; } roleSpan.textContent = roleText; roleSpan.className = `text-xs ${roleClass} px-2 py-1 rounded-full`;
+                         li.appendChild(nicknameSpan); li.appendChild(roleSpan); playerList.appendChild(li);
+                     });
+                     if (isGmInLobby) {
+                         gmPanel.style.display = 'block'; playerWaitMessage.style.display = 'none';
+                         const playerCount = participants.filter(p => p.role === 'player').length;
+                         startGameBtn.disabled = playerCount < 2 || playerCount > 4;
+                         startGameBtn.textContent = startGameBtn.disabled ? `ゲーム開始 (${playerCount}/2-4人)` : 'ゲーム開始';
+                     } else { gmPanel.style.display = 'none'; playerWaitMessage.style.display = 'flex'; }
+                 });
+
+                 socket.on('playerFinished', ({ playerId: finishedPlayerId, rank }) => {
+                      const nickname = allPlayersData.find(p=>p.id === finishedPlayerId)?.nickname || shortId(finishedPlayerId);
+                      log(`🏁 ${nickname} が ${rank} 位で上がりました！`);
+                      if (!finishedPlayers.includes(finishedPlayerId)) finishedPlayers.push(finishedPlayerId);
+                      renderAll();
+                 });
+                 socket.on('gameOver', ({ loserId, winnerId, results }) => {
+                     gameOver = true; isMyTurn = false; clickableLocked = true; let msg = "";
+                     const loserNickname = allPlayersData.find(p=>p.id === loserId)?.nickname || '???';
+                     if (myPlayerId && loserId === myPlayerId) { msg = `💀 ${loserNickname} (あなた) の負けです...`; }
+                     else { msg = `🎉 ${loserNickname} がババを持っていました！ゲーム終了！`; }
+                     winnerTextEl.textContent = msg; winnerMessageEl.style.display = 'block'; log(msg); renderAll();
+                     if(results) { localStorage.setItem('gameResults', JSON.stringify(results)); }
+                 });
+                 socket.on('gameLog', (msg) => { log(msg); });
+                 socket.on('error', (message) => { log(`❌ エラー: ${message}`); });
+                 socket.on('disconnect', () => { log("⚠️ サーバーとの接続が切れました。"); });
+            }
+
+            // ★ 修正: リスナー設定後に joinLobby を送信
+            socket.emit('joinLobby', { token, roomId });
+
+            // --- UI Event Listeners ---
+             if (startGameBtn) startGameBtn.addEventListener('click', () => { if (!socket || startGameBtn.disabled) return; socket.emit('startGame', { roomId, settings: {}, gameType: 'babanuki' }); });
+             if (goToResultBtn) goToResultBtn.addEventListener('click', () => { window.location.href = window.location.origin + '/result.html'; });
+
+             if (selectLeftBtn) selectLeftBtn.addEventListener('click', () => {
+                 const opponentId = findOpponentToDrawFrom();
+                 const opponentData = opponentsState[opponentId];
+                 if (opponentData && opponentData.count > 0) {
+                     selectedCardIndex = (selectedCardIndex - 1 + opponentData.count) % opponentData.count;
+                     renderPlayerViewHands(); // ハイライト更新
+                 }
+             });
+             
+             if (selectRightBtn) selectRightBtn.addEventListener('click', () => {
+                 const opponentId = findOpponentToDrawFrom();
+                 const opponentData = opponentsState[opponentId];
+                 if (opponentData && opponentData.count > 0) {
+                     selectedCardIndex = (selectedCardIndex + 1) % opponentData.count;
+                     renderPlayerViewHands(); // ハイライト更新
+                 }
+             });
+             
+             if (drawCardBtn) drawCardBtn.addEventListener('click', () => {
+                 if (clickableLocked || !isMyTurn) return;
+                 clickableLocked = true;
+                 opponentControlsEl.style.display = 'none'; // ボタンを隠す
+                 log("🔹 カードを選択中...");
+                 // サーバーに「選択したインデックス」を送る
+                 socket.emit("pickCard", { roomId, index: selectedCardIndex });
+             });
+        
+        }); // ★ 修正: DOMContentLoaded の閉じ括弧
+    </script>
+</body>
+</html>
